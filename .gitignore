@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+comfyui/
+*.part
+*.blend*
+*.safetensors
+*.gguf
+*.pt
+*.log

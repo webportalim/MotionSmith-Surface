@@ -1,0 +1,2682 @@
+{
+  "id": "8cc79fe4-4009-490b-b15c-f4a4d645958e",
+  "revision": 0,
+  "last_node_id": 71,
+  "last_link_id": 52,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [
+        20,
+        80
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1,
+            32,
+            33
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_front.png",
+        "image"
+      ],
+      "title": "01 · Front / 0° (reference + texture)"
+    },
+    {
+      "id": 2,
+      "type": "UltraTexLoadMesh",
+      "pos": [
+        2440,
+        150
+      ],
+      "size": [
+        420,
+        82
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": [
+            35
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexLoadMesh"
+      },
+      "widgets_values": [
+        "C:\\path\\to\\your_mesh.glb",
+        false
+      ],
+      "title": "Your existing 3D mesh (GLB / OBJ / PLY)"
+    },
+    {
+      "id": 3,
+      "type": "LoadBackgroundRemovalModel",
+      "pos": [
+        2440,
+        300
+      ],
+      "size": [
+        420,
+        60
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "bg_model",
+          "type": "BACKGROUND_REMOVAL",
+          "links": [
+            31
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadBackgroundRemovalModel"
+      },
+      "widgets_values": [
+        "birefnet.safetensors"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "RemoveBackground",
+      "pos": [
+        2440,
+        420
+      ],
+      "size": [
+        420,
+        50
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "bg_removal_model",
+          "type": "BACKGROUND_REMOVAL",
+          "link": 31
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 32
+        }
+      ],
+      "outputs": [
+        {
+          "name": "mask",
+          "type": "MASK",
+          "links": [
+            34
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "RemoveBackground"
+      }
+    },
+    {
+      "id": 6,
+      "type": "UNETLoader",
+      "pos": [
+        2440,
+        1230
+      ],
+      "size": [
+        440,
+        82
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            39
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "flux-2-klein-base-9b-fp8.safetensors",
+        "default"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "CLIPLoader",
+      "pos": [
+        2440,
+        1370
+      ],
+      "size": [
+        440,
+        106
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            41
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen_3_8b_fp8mixed.safetensors",
+        "flux2",
+        "default"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "VAELoader",
+      "pos": [
+        2440,
+        1520
+      ],
+      "size": [
+        440,
+        60
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            40
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "flux2-vae.safetensors"
+      ]
+    },
+    {
+      "id": 9,
+      "type": "UltraTexForegroundDecoder",
+      "pos": [
+        2880,
+        1520
+      ],
+      "size": [
+        440,
+        60
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 40
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            43
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexForegroundDecoder"
+      },
+      "widgets_values": [
+        "ultratex_flux2_decoder.pt"
+      ]
+    },
+    {
+      "id": 11,
+      "type": "UltraTexLoraLoader",
+      "pos": [
+        2880,
+        1220
+      ],
+      "size": [
+        440,
+        82
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 39
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            42
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexLoraLoader"
+      },
+      "widgets_values": [
+        "ultratex_flux2_mr.safetensors",
+        1.0
+      ],
+      "title": "Optional AI PBR: metallic / roughness ONLY"
+    },
+    {
+      "id": 12,
+      "type": "CLIPTextEncode",
+      "pos": [
+        2880,
+        1380
+      ],
+      "size": [
+        440,
+        100
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 41
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            44
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "title": "Empty prompt (leave empty)"
+    },
+    {
+      "id": 14,
+      "type": "UltraTexPrep",
+      "pos": [
+        2440,
+        540
+      ],
+      "size": [
+        380,
+        220
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "reference_image",
+          "type": "IMAGE",
+          "link": 33
+        },
+        {
+          "name": "reference_mask",
+          "type": "MASK",
+          "link": 34,
+          "shape": 7
+        },
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "link": 35,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "prep",
+          "type": "ULTRATEX_PREP",
+          "links": [
+            38,
+            45,
+            47
+          ]
+        },
+        {
+          "name": "normal_views",
+          "type": "IMAGE",
+          "links": [
+            37
+          ]
+        },
+        {
+          "name": "reference",
+          "type": "IMAGE",
+          "links": [
+            36
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexPrep"
+      },
+      "widgets_values": [
+        "",
+        4096,
+        4096,
+        "comfy_gpu",
+        "fit_front_silhouette",
+        "foreground"
+      ],
+      "title": "Mesh Prep / UV / 6 native cameras"
+    },
+    {
+      "id": 15,
+      "type": "PreviewImage",
+      "pos": [
+        2870,
+        700
+      ],
+      "size": [
+        380,
+        300
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 36
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "PreviewImage"
+      },
+      "title": "Reference check (should fill the silhouette)"
+    },
+    {
+      "id": 16,
+      "type": "PreviewImage",
+      "pos": [
+        2870,
+        1060
+      ],
+      "size": [
+        380,
+        200
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 37
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "PreviewImage"
+      },
+      "title": "Normal views (6 cameras)"
+    },
+    {
+      "id": 20,
+      "type": "UltraTexSampler",
+      "pos": [
+        3340,
+        1210
+      ],
+      "size": [
+        330,
+        420
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 42
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 43
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 44
+        },
+        {
+          "name": "prep",
+          "type": "ULTRATEX_PREP",
+          "link": 45
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": null,
+          "shape": 7
+        },
+        {
+          "name": "init_views",
+          "type": "IMAGE",
+          "link": null,
+          "shape": 7
+        },
+        {
+          "name": "keep_mask",
+          "type": "MASK",
+          "link": null,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "views",
+          "type": "IMAGE",
+          "links": [
+            49
+          ]
+        },
+        {
+          "name": "masks",
+          "type": "MASK",
+          "links": null
+        },
+        {
+          "name": "atlas",
+          "type": "IMAGE",
+          "links": [
+            46
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexSampler"
+      },
+      "widgets_values": [
+        1024,
+        25,
+        12345,
+        "fixed",
+        4.0,
+        true,
+        0,
+        "ultratex_sparse",
+        0.2,
+        8192,
+        1.0
+      ],
+      "title": "Optional MR prediction (albedo NOT generated)"
+    },
+    {
+      "id": 21,
+      "type": "PreviewImage",
+      "pos": [
+        3750,
+        1220
+      ],
+      "size": [
+        380,
+        340
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 46
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "PreviewImage"
+      },
+      "title": "MR views (should look like flat maps)"
+    },
+    {
+      "id": 22,
+      "type": "UltraTexRotateRig",
+      "pos": [
+        2440,
+        830
+      ],
+      "size": [
+        330,
+        110
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prep",
+          "type": "ULTRATEX_PREP",
+          "link": 38
+        }
+      ],
+      "outputs": [
+        {
+          "name": "prep",
+          "type": "ULTRATEX_PREP",
+          "links": [
+            50
+          ]
+        },
+        {
+          "name": "normal_views",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexRotateRig"
+      },
+      "widgets_values": [
+        45.0,
+        0.0,
+        "per view"
+      ],
+      "title": "Second camera rig, +45° (4 side cameras)"
+    },
+    {
+      "id": 26,
+      "type": "UltraTexBake",
+      "pos": [
+        3340,
+        130
+      ],
+      "size": [
+        340,
+        280
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prep",
+          "type": "ULTRATEX_PREP",
+          "link": 47
+        },
+        {
+          "name": "albedo_views",
+          "type": "IMAGE",
+          "link": 48
+        },
+        {
+          "name": "metallic_roughness_views",
+          "type": "IMAGE",
+          "link": 49,
+          "shape": 7
+        },
+        {
+          "name": "prep_2",
+          "type": "ULTRATEX_PREP",
+          "link": 50,
+          "shape": 7
+        },
+        {
+          "name": "albedo_views_2",
+          "type": "IMAGE",
+          "link": 51,
+          "shape": 7
+        },
+        {
+          "name": "metallic_roughness_views_2",
+          "type": "IMAGE",
+          "link": null,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "trimesh",
+          "type": "TRIMESH",
+          "links": null
+        },
+        {
+          "name": "albedo_texture",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "preview",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "name": "glb_path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "model_3d",
+          "type": "FILE_3D_GLB",
+          "links": [
+            52
+          ]
+        },
+        {
+          "name": "bake_state",
+          "type": "ULTRATEX_BAKE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ultratex",
+        "ver": "8137da52ed8352305cb7825b39c36a250bf2507a",
+        "aux_id": "visualbruno/ComfyUI-UltraTex",
+        "Node name for S&R": "UltraTexBake"
+      },
+      "widgets_values": [
+        2048,
+        "UltraTex/Manual10",
+        4.0,
+        0.5,
+        6.0,
+        "no top/bottom"
+      ],
+      "title": "10 supplied images -> UV bake + textured GLB"
+    },
+    {
+      "id": 27,
+      "type": "Preview3DAdvanced",
+      "pos": [
+        3750,
+        130
+      ],
+      "size": [
+        540,
+        640
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model_3d",
+          "type": "FILE_3D_GLB,FILE_3D_GLTF,FILE_3D_FBX,FILE_3D_OBJ,FILE_3D_STL,FILE_3D_USDZ,FILE_3D",
+          "link": 52
+        },
+        {
+          "name": "model_3d_info",
+          "type": "LOAD3D_MODEL_INFO",
+          "link": null,
+          "shape": 7
+        },
+        {
+          "name": "camera_info",
+          "type": "LOAD3D_CAMERA",
+          "link": null,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model_3d",
+          "type": "FILE_3D",
+          "links": null
+        },
+        {
+          "name": "model_3d_info",
+          "type": "LOAD3D_MODEL_INFO",
+          "links": null
+        },
+        {
+          "name": "camera_info",
+          "type": "LOAD3D_CAMERA",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "Preview3DAdvanced",
+        "Camera Config": {
+          "cameraType": "perspective",
+          "fov": 35,
+          "hasCustomUp": false,
+          "state": {
+            "position": {
+              "x": -0.442618911232288,
+              "y": 0.5610654210393151,
+              "z": 2.2314052152323804
+            },
+            "target": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "zoom": 1,
+            "cameraType": "perspective",
+            "quaternion": {
+              "x": -0.12003263950586747,
+              "y": -0.09703855551230088,
+              "z": -0.011789913246463023,
+              "w": 0.9879456878507955
+            },
+            "fov": 35,
+            "aspect": 1,
+            "near": 0.01,
+            "far": 10000,
+            "frustum": {
+              "left": -5,
+              "right": 5,
+              "top": 5,
+              "bottom": -5
+            }
+          }
+        },
+        "Light Config": {
+          "intensity": 3,
+          "hdri": {
+            "enabled": false,
+            "hdriPath": "",
+            "showAsBackground": false,
+            "intensity": 1
+          }
+        },
+        "Scene Config": {
+          "showGrid": false,
+          "backgroundColor": "#282828",
+          "backgroundImage": "",
+          "backgroundRenderMode": "tiled",
+          "models": []
+        },
+        "Model Config": {
+          "upDirection": "original",
+          "materialMode": "original",
+          "showSkeleton": false,
+          "gizmo": {
+            "enabled": false,
+            "mode": "translate",
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            }
+          }
+        }
+      },
+      "widgets_values": [
+        "",
+        1024,
+        1024
+      ]
+    },
+    {
+      "id": 31,
+      "type": "LoadImage",
+      "pos": [
+        20,
+        400
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_left.png",
+        "image"
+      ],
+      "title": "02 · Left / 270°"
+    },
+    {
+      "id": 32,
+      "type": "LoadImage",
+      "pos": [
+        20,
+        720
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_back.png",
+        "image"
+      ],
+      "title": "03 · Back / 180°"
+    },
+    {
+      "id": 33,
+      "type": "LoadImage",
+      "pos": [
+        20,
+        1040
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_right.png",
+        "image"
+      ],
+      "title": "04 · Right / 90°"
+    },
+    {
+      "id": 34,
+      "type": "LoadImage",
+      "pos": [
+        20,
+        1360
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_top.png",
+        "image"
+      ],
+      "title": "05 · Top"
+    },
+    {
+      "id": 35,
+      "type": "LoadImage",
+      "pos": [
+        20,
+        1680
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_bottom.png",
+        "image"
+      ],
+      "title": "06 · Bottom"
+    },
+    {
+      "id": 36,
+      "type": "LoadImage",
+      "pos": [
+        1190,
+        80
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            7
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_diagonal45.png",
+        "image"
+      ],
+      "title": "07 · Front-Left / 315°"
+    },
+    {
+      "id": 37,
+      "type": "LoadImage",
+      "pos": [
+        1190,
+        400
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_diagonal135.png",
+        "image"
+      ],
+      "title": "08 · Back-Left / 225°"
+    },
+    {
+      "id": 38,
+      "type": "LoadImage",
+      "pos": [
+        1190,
+        720
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 25,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_diagonal225.png",
+        "image"
+      ],
+      "title": "09 · Back-Right / 135°"
+    },
+    {
+      "id": 39,
+      "type": "LoadImage",
+      "pos": [
+        1190,
+        1040
+      ],
+      "size": [
+        350,
+        300
+      ],
+      "flags": {},
+      "order": 26,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            10
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.38.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "your_diagonal315.png",
+        "image"
+      ],
+      "title": "10 · Front-Right / 45°"
+    },
+    {
+      "id": 40,
+      "type": "ImageScale",
+      "pos": [
+        410,
+        150
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 27,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize front to 1024 square"
+    },
+    {
+      "id": 41,
+      "type": "ImageScale",
+      "pos": [
+        410,
+        470
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 28,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize left 270 to 1024 square"
+    },
+    {
+      "id": 42,
+      "type": "ImageScale",
+      "pos": [
+        410,
+        790
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 29,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize back to 1024 square"
+    },
+    {
+      "id": 43,
+      "type": "ImageScale",
+      "pos": [
+        410,
+        1110
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 30,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            16
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize right 90 to 1024 square"
+    },
+    {
+      "id": 44,
+      "type": "ImageScale",
+      "pos": [
+        410,
+        1430
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 31,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            18,
+            28
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize top to 1024 square"
+    },
+    {
+      "id": 45,
+      "type": "ImageScale",
+      "pos": [
+        410,
+        1750
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            20,
+            30
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize bottom to 1024 square"
+    },
+    {
+      "id": 46,
+      "type": "ImageScale",
+      "pos": [
+        1580,
+        150
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 33,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            21
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize front-left 315 to 1024 square"
+    },
+    {
+      "id": 47,
+      "type": "ImageScale",
+      "pos": [
+        1580,
+        470
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 34,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize back-left 225 to 1024 square"
+    },
+    {
+      "id": 48,
+      "type": "ImageScale",
+      "pos": [
+        1580,
+        790
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 35,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 9
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            24
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize back-right 135 to 1024 square"
+    },
+    {
+      "id": 49,
+      "type": "ImageScale",
+      "pos": [
+        1580,
+        1110
+      ],
+      "size": [
+        280,
+        134
+      ],
+      "flags": {},
+      "order": 36,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            26
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScale"
+      },
+      "widgets_values": [
+        "lanczos",
+        1024,
+        1024,
+        "center"
+      ],
+      "title": "Normalize front-right 45 to 1024 square"
+    },
+    {
+      "id": 50,
+      "type": "ImageBatch",
+      "pos": [
+        780,
+        100
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 11
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Native views 1/6"
+    },
+    {
+      "id": 51,
+      "type": "ImageBatch",
+      "pos": [
+        780,
+        270
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 38,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 13
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Native views 2/6"
+    },
+    {
+      "id": 52,
+      "type": "ImageBatch",
+      "pos": [
+        780,
+        440
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 39,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 15
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Native views 3/6"
+    },
+    {
+      "id": 53,
+      "type": "ImageBatch",
+      "pos": [
+        780,
+        610
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 40,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 17
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 18
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            19
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Native views 4/6"
+    },
+    {
+      "id": 54,
+      "type": "ImageBatch",
+      "pos": [
+        780,
+        780
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 41,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 19
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            48
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Native views 5/6"
+    },
+    {
+      "id": 55,
+      "type": "ImageBatch",
+      "pos": [
+        2070,
+        100
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 42,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 21
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 22
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            23
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Rotated views 1/6"
+    },
+    {
+      "id": 56,
+      "type": "ImageBatch",
+      "pos": [
+        2070,
+        270
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 43,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 23
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 24
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            25
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Rotated views 2/6"
+    },
+    {
+      "id": 57,
+      "type": "ImageBatch",
+      "pos": [
+        2070,
+        440
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 44,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 25
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 26
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            27
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Rotated views 3/6"
+    },
+    {
+      "id": 58,
+      "type": "ImageBatch",
+      "pos": [
+        2070,
+        610
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 27
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 28
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            29
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Rotated views 4/6"
+    },
+    {
+      "id": 59,
+      "type": "ImageBatch",
+      "pos": [
+        2070,
+        780
+      ],
+      "size": [
+        260,
+        80
+      ],
+      "flags": {},
+      "order": 46,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image1",
+          "type": "IMAGE",
+          "link": 29
+        },
+        {
+          "name": "image2",
+          "type": "IMAGE",
+          "link": 30
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            51
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageBatch"
+      },
+      "widgets_values": [],
+      "title": "Rotated views 5/6"
+    },
+    {
+      "id": 70,
+      "type": "MarkdownNote",
+      "pos": [
+        0,
+        -780
+      ],
+      "size": [
+        1600,
+        680
+      ],
+      "flags": {},
+      "order": 47,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# UltraTex · 10 INPUT IMAGES -> 3D BAKE (NO AI ALBEDO GENERATION)\n\nThis is a modified version of the supplied 10-view + PBR workflow.\n\n**Six canonical photos:** front, left, back, right, top, bottom.\n\n**Four additional photos:** yaw 45°, 135°, 225°, 315°.\n\nAssign ALL TEN files in the LoadImage nodes, and set the mesh path. Then Run.\n\nThe Albedo AI Samplers are REMOVED: the ten provided RGB photos are projected directly onto the mesh UVs.\n\n**Important:** the provided images must already have camera alignment with the corresponding views of the provided 3D mesh: same camera angles, FOV/perspective and object framing. The workflow does NOT solve camera registration automatically. Arbitrary real-world photos will often misproject. The image is center-cropped to 1024² but not geometrically calibrated.\n\nThe bottom-right PBR branch still uses AI to estimate Metallic/Roughness from the front reference. Remove the MR-to-Bake connection to skip AI entirely (then export only Albedo).\n\nSecond rig is 45° rotated. The repeated top/bottom images are placeholders only: Bake sets `views_2_use=no top/bottom` so only its first four rotated views are used.\n"
+      ],
+      "title": "README / manual 10-view projection",
+      "color": "#234",
+      "bgcolor": "#345"
+    },
+    {
+      "id": 71,
+      "type": "MarkdownNote",
+      "pos": [
+        2410,
+        -780
+      ],
+      "size": [
+        1200,
+        680
+      ],
+      "flags": {},
+      "order": 48,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Bake input `albedo_views` receives 6 native views through ImageBatch.\nBake input `albedo_views_2` receives 4 user-supplied rotated side views + 2 ignored duplicates.\n2 custom nodes for mesh/rig/bake are unchanged; the model generation samplers for ALBEDO were removed.\n\nOutput: ComfyUI/output/UltraTex/Manual10*.glb and PNG Albedo, plus ORM if the optional MR sampler runs.\n\nThis JSON was statically checked for consistent ComfyUI graph links, but actual run needs the UltraTex custom nodes and model files installed.\n"
+      ],
+      "title": "Output & validation",
+      "color": "#234",
+      "bgcolor": "#345"
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      40,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      31,
+      0,
+      41,
+      0,
+      "IMAGE"
+    ],
+    [
+      3,
+      32,
+      0,
+      42,
+      0,
+      "IMAGE"
+    ],
+    [
+      4,
+      33,
+      0,
+      43,
+      0,
+      "IMAGE"
+    ],
+    [
+      5,
+      34,
+      0,
+      44,
+      0,
+      "IMAGE"
+    ],
+    [
+      6,
+      35,
+      0,
+      45,
+      0,
+      "IMAGE"
+    ],
+    [
+      7,
+      36,
+      0,
+      46,
+      0,
+      "IMAGE"
+    ],
+    [
+      8,
+      37,
+      0,
+      47,
+      0,
+      "IMAGE"
+    ],
+    [
+      9,
+      38,
+      0,
+      48,
+      0,
+      "IMAGE"
+    ],
+    [
+      10,
+      39,
+      0,
+      49,
+      0,
+      "IMAGE"
+    ],
+    [
+      11,
+      40,
+      0,
+      50,
+      0,
+      "IMAGE"
+    ],
+    [
+      12,
+      41,
+      0,
+      50,
+      1,
+      "IMAGE"
+    ],
+    [
+      13,
+      50,
+      0,
+      51,
+      0,
+      "IMAGE"
+    ],
+    [
+      14,
+      42,
+      0,
+      51,
+      1,
+      "IMAGE"
+    ],
+    [
+      15,
+      51,
+      0,
+      52,
+      0,
+      "IMAGE"
+    ],
+    [
+      16,
+      43,
+      0,
+      52,
+      1,
+      "IMAGE"
+    ],
+    [
+      17,
+      52,
+      0,
+      53,
+      0,
+      "IMAGE"
+    ],
+    [
+      18,
+      44,
+      0,
+      53,
+      1,
+      "IMAGE"
+    ],
+    [
+      19,
+      53,
+      0,
+      54,
+      0,
+      "IMAGE"
+    ],
+    [
+      20,
+      45,
+      0,
+      54,
+      1,
+      "IMAGE"
+    ],
+    [
+      21,
+      46,
+      0,
+      55,
+      0,
+      "IMAGE"
+    ],
+    [
+      22,
+      47,
+      0,
+      55,
+      1,
+      "IMAGE"
+    ],
+    [
+      23,
+      55,
+      0,
+      56,
+      0,
+      "IMAGE"
+    ],
+    [
+      24,
+      48,
+      0,
+      56,
+      1,
+      "IMAGE"
+    ],
+    [
+      25,
+      56,
+      0,
+      57,
+      0,
+      "IMAGE"
+    ],
+    [
+      26,
+      49,
+      0,
+      57,
+      1,
+      "IMAGE"
+    ],
+    [
+      27,
+      57,
+      0,
+      58,
+      0,
+      "IMAGE"
+    ],
+    [
+      28,
+      44,
+      0,
+      58,
+      1,
+      "IMAGE"
+    ],
+    [
+      29,
+      58,
+      0,
+      59,
+      0,
+      "IMAGE"
+    ],
+    [
+      30,
+      45,
+      0,
+      59,
+      1,
+      "IMAGE"
+    ],
+    [
+      31,
+      3,
+      0,
+      4,
+      0,
+      "BACKGROUND_REMOVAL"
+    ],
+    [
+      32,
+      1,
+      0,
+      4,
+      1,
+      "IMAGE"
+    ],
+    [
+      33,
+      1,
+      0,
+      14,
+      0,
+      "IMAGE"
+    ],
+    [
+      34,
+      4,
+      0,
+      14,
+      1,
+      "MASK"
+    ],
+    [
+      35,
+      2,
+      0,
+      14,
+      2,
+      "TRIMESH"
+    ],
+    [
+      36,
+      14,
+      2,
+      15,
+      0,
+      "IMAGE"
+    ],
+    [
+      37,
+      14,
+      1,
+      16,
+      0,
+      "IMAGE"
+    ],
+    [
+      38,
+      14,
+      0,
+      22,
+      0,
+      "ULTRATEX_PREP"
+    ],
+    [
+      39,
+      6,
+      0,
+      11,
+      0,
+      "MODEL"
+    ],
+    [
+      40,
+      8,
+      0,
+      9,
+      0,
+      "VAE"
+    ],
+    [
+      41,
+      7,
+      0,
+      12,
+      0,
+      "CLIP"
+    ],
+    [
+      42,
+      11,
+      0,
+      20,
+      0,
+      "MODEL"
+    ],
+    [
+      43,
+      9,
+      0,
+      20,
+      1,
+      "VAE"
+    ],
+    [
+      44,
+      12,
+      0,
+      20,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      45,
+      14,
+      0,
+      20,
+      3,
+      "ULTRATEX_PREP"
+    ],
+    [
+      46,
+      20,
+      2,
+      21,
+      0,
+      "IMAGE"
+    ],
+    [
+      47,
+      14,
+      0,
+      26,
+      0,
+      "ULTRATEX_PREP"
+    ],
+    [
+      48,
+      54,
+      0,
+      26,
+      1,
+      "IMAGE"
+    ],
+    [
+      49,
+      20,
+      0,
+      26,
+      2,
+      "IMAGE"
+    ],
+    [
+      50,
+      22,
+      0,
+      26,
+      3,
+      "ULTRATEX_PREP"
+    ],
+    [
+      51,
+      59,
+      0,
+      26,
+      4,
+      "IMAGE"
+    ],
+    [
+      52,
+      26,
+      4,
+      27,
+      0,
+      "FILE_3D_GLB"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "A · 6 supplied canonical images: front / left / back / right / top / bottom",
+      "bounding": [
+        0,
+        0,
+        1170,
+        2030
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 2,
+      "title": "B · 4 supplied diagonal images: 45 / 135 / 225 / 315",
+      "bounding": [
+        1175,
+        0,
+        1180,
+        1430
+      ],
+      "color": "#7a4e8f",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 3,
+      "title": "C · Mesh, UV and cameras",
+      "bounding": [
+        2415,
+        0,
+        830,
+        1190
+      ],
+      "color": "#3f789e",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 4,
+      "title": "D · Bake and 3D output",
+      "bounding": [
+        3290,
+        0,
+        1020,
+        1150
+      ],
+      "color": "#a1683a",
+      "font_size": 24,
+      "flags": {}
+    },
+    {
+      "id": 5,
+      "title": "E · Optional AI metallic / roughness (no AI albedo)",
+      "bounding": [
+        2415,
+        1200,
+        1680,
+        670
+      ],
+      "color": "#555555",
+      "font_size": 24,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.3,
+      "offset": [
+        300,
+        280
+      ]
+    },
+    "frontendVersion": "1.53.10"
+  },
+  "version": 0.4
+}

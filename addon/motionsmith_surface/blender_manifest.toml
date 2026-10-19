@@ -1,0 +1,16 @@
+schema_version = "1.0.0"
+id = "motionsmith_surface"
+version = "0.1.0"
+name = "MotionSmith Surface"
+tagline = "AI PBR Texturing and Material Generation for Blender"
+maintainer = "MotionSmith"
+type = "add-on"
+blender_version_min = "5.0.0"
+license = ["SPDX:GPL-3.0-or-later"]
+platforms = ["windows-x64"]
+wheels = ["./wheels/websocket_client-1.8.0-py3-none-any.whl"]
+tags = ["3D View", "Material", "UV", "Bake", "Paint", "Mesh"]
+
+[permissions]
+network = "Connects to local ComfyUI inference backend"
+files = "Reads reference images and saves exported 3D assets and textures"
