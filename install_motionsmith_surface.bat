@@ -11,7 +11,7 @@ exit /b %MS_SURFACE_RESULT%
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$BackendUrl = 'https://huggingface.co/Serqan/MotionSmith-Runtime/resolve/main/blender/MotionSmith-Surface/motionsmith_surface_backend_win64_0.1.0.zip?download=true'
+$BackendUrl = 'https://huggingface.co/Serqan/MotionSmith-Surface-Backend/resolve/main/motionsmith_surface_backend_win64_0.1.0.zip?download=true'
 $BackendHash = 'd04c5edcedde213d99aea5b1e68e10f1814161c14b209048f977b93daabbac11'
 $BackendSize = [long]4211074697
 $Models = @(

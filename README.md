@@ -8,7 +8,7 @@ Create textures for a selected mesh or extract PBR material maps from a single i
 
 Created by **Sertan Koç — OneManStudio**.
 
-[Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface.zip) · [Documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html) · [Product page](https://motionsmithai.blogspot.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Runtime/tree/main/blender/MotionSmith-Surface)
+[Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface.zip) · [Documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html) · [Product page](https://motionsmithai.blogspot.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Surface-Backend)
 
 ## Install
 
