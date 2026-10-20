@@ -11,9 +11,9 @@ exit /b %MS_SURFACE_RESULT%
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$BackendUrl = 'https://huggingface.co/Serqan/MotionSmith-Surface-Backend/resolve/main/motionsmith_surface_backend_win64_0.1.0.zip?download=true'
-$BackendHash = 'd04c5edcedde213d99aea5b1e68e10f1814161c14b209048f977b93daabbac11'
-$BackendSize = [long]4211074697
+$BackendUrl = 'https://huggingface.co/Serqan/MotionSmith-Surface-Backend/resolve/main/motionsmith_surface_backend_win64_0.1.1.zip?download=true'
+$BackendHash = '0a9c26a8592cbf36a8732c5667ebcf924c241d9cbc72a92623d5459b60636ab7'
+$BackendSize = [long]4428090499
 $Models = @(
     @('diffusion_models/flux-2-klein-base-9b-Q4_0.gguf', 'https://huggingface.co/unsloth/FLUX.2-klein-base-9B-GGUF/resolve/main/flux-2-klein-base-9b-Q4_0.gguf?download=true', [long]5616228640, '02d4c2b55b5a6d4aca65eafd0f0eabe8c1e3837391042b6879be04eb99c7e116'),
     @('text_encoders/qwen_3_8b_fp8mixed.safetensors', 'https://huggingface.co/Comfy-Org/flux2-klein-9B/resolve/main/split_files/text_encoders/qwen_3_8b_fp8mixed.safetensors?download=true', [long]8664848742, 'abad16806e0cbabc54e0325d6565847443fe396d5f0be38bb3cd3fe75a1201d6'),
@@ -21,6 +21,7 @@ $Models = @(
     @('loras/ultratex_flux2.safetensors', 'https://www.modelscope.ai/models/Yibo-Zhang/UltraTex/resolve/master/flux2/lora/dit_lora.safetensors?view=false', [long]478172752, '3b1915177a81bc2ab43f501355bf39113df0128e6cbc6fedf8b8621d5e06a01c'),
     @('loras/ultratex_flux2_mr.safetensors', 'https://www.modelscope.ai/models/Yibo-Zhang/UltraTex/resolve/master/flux2_mr/lora/dit_lora.safetensors?view=false', [long]478172752, '13e94f5a30a789b1e3e76d8c96cbba5f52fb2f68411e56377f382e145da23fc1'),
     @('ultratex/ultratex_flux2_decoder.pt', 'https://www.modelscope.ai/models/Yibo-Zhang/UltraTex/resolve/master/flux2/decoder.pt?view=false', [long]99261764, '981dc4c52481687c6da4e6211617615a2b2bcc33456e1953ee6c5478aa00025b'),
+    @('deepbump/deepbump256.onnx', 'https://raw.githubusercontent.com/HugoTini/DeepBump/fad19ba87daed12b1d0410a57e74f3d79e82f78d/deepbump256.onnx', [long]26706979, '3a2ababc5fa652b19040a0f3d639b71826368e52ad805cf70ffb0e7c96a54d67'),
     @('background_removal/birefnet.safetensors', 'https://huggingface.co/Comfy-Org/BiRefNet/resolve/main/background_removal/birefnet.safetensors?download=true', [long]444473596, '9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154'),
     @('checkpoints/SD/chord_v1.safetensors', 'https://huggingface.co/Ubisoft/ubisoft-laforge-chord/resolve/main/chord_v1.safetensors?download=true', [long]2761211350, 'b56f48857f1d84f0d051284d0c1f3ac58ecc6e86fba15c4849789f3807dd0cc2')
 )
@@ -82,7 +83,7 @@ function Test-Backend {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath (Join-Path $Path 'main.py') -PathType Leaf)) { return $false }
     if (-not (Get-BackendPython $Path)) { return $false }
-    foreach ($node in @('ComfyUI-UltraTex', 'comfyui_ultratex_modular', 'ComfyUI-Chord', 'ComfyUI-GGUF')) {
+    foreach ($node in @('ComfyUI-UltraTex', 'comfyui_ultratex_modular', 'ComfyUI-Chord', 'ComfyUI-GGUF', 'comfy-mtb')) {
         if (-not (Test-Path -LiteralPath (Join-Path $Path ('custom_nodes\' + $node)))) { return $false }
     }
     return $true
@@ -145,7 +146,7 @@ function Get-ModelIndex {
         if (-not $visited.Add($directory)) { continue }
         try {
             foreach ($path in [IO.Directory]::EnumerateFiles($directory)) {
-                if ([IO.Path]::GetExtension($path) -notin @('.safetensors', '.gguf', '.pt')) { continue }
+                if ([IO.Path]::GetExtension($path) -notin @('.safetensors', '.gguf', '.pt', '.onnx')) { continue }
                 $file = New-Object IO.FileInfo($path)
                 $key = [string]$file.Length
                 if ($sizes.ContainsKey($key)) {
@@ -222,7 +223,7 @@ function Install-Surface {
         if (Test-Path -LiteralPath $comfy) {
             throw "Incomplete or different backend at $comfy . Select a new folder; no existing installation was overwritten."
         }
-        $archive = Join-Path $installRoot 'motionsmith_surface_backend_win64_0.1.0.zip'
+        $archive = Join-Path $installRoot 'motionsmith_surface_backend_win64_0.1.1.zip'
         Get-Download $BackendUrl $archive $BackendSize $BackendHash
         Write-Host 'Extracting backend. This can take several minutes...'
         Add-Type -AssemblyName System.IO.Compression.FileSystem

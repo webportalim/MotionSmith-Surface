@@ -131,14 +131,23 @@ def apply_pbr_textures(obj, albedo_path, orm_path=None, material_name="M_UltraTe
     uv = nodes.new("ShaderNodeUVMap")
     uv.uv_map = uv_name or (obj.data.uv_layers.active.name if obj and obj.data.uv_layers.active else "")
     uv.location = (-700, 200)
+    coordinates = uv.outputs["UV"]
+    if map_label == "Chord":
+        uv.location = (-1000, 200)
+        mapping = nodes.new("ShaderNodeMapping")
+        mapping.label = "PBR Mapping"
+        mapping.vector_type = 'POINT'
+        mapping.location = (-750, 200)
+        links.new(coordinates, mapping.inputs["Vector"])
+        coordinates = mapping.outputs["Vector"]
     tex = nodes.new("ShaderNodeTexImage")
     tex.image, tex.label, tex.location = albedo, f"{map_label} Albedo", (-400, 200)
-    links.new(uv.outputs["UV"], tex.inputs["Vector"])
+    links.new(coordinates, tex.inputs["Vector"])
     links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
     if orm:
         tex = nodes.new("ShaderNodeTexImage")
         tex.image, tex.label, tex.location = orm, "UltraTex ORM (AO/R/M)", (-400, -150)
-        links.new(uv.outputs["UV"], tex.inputs["Vector"])
+        links.new(coordinates, tex.inputs["Vector"])
         separate = nodes.new("ShaderNodeSeparateColor")
         separate.location = (-100, -150)
         links.new(tex.outputs["Color"], separate.inputs["Color"])
@@ -154,7 +163,7 @@ def apply_pbr_textures(obj, albedo_path, orm_path=None, material_name="M_UltraTe
         tex = nodes.new("ShaderNodeTexImage")
         tex.image, tex.label = image, map_label + " " + socket
         tex.location = (-400, -450 if socket == "Roughness" else -750)
-        links.new(uv.outputs["UV"], tex.inputs["Vector"])
+        links.new(coordinates, tex.inputs["Vector"])
         links.new(tex.outputs["Color"], bsdf.inputs[socket])
     if normal_path:
         norm_img = bpy.data.images.load(normal_path, check_existing=True)
@@ -165,8 +174,10 @@ def apply_pbr_textures(obj, albedo_path, orm_path=None, material_name="M_UltraTe
         tex_norm.image, tex_norm.label = norm_img, map_label + " Normal"
         tex_norm.location = (-400, -950)
         norm_node = nodes.new("ShaderNodeNormalMap")
+        norm_node.space = 'TANGENT'
+        norm_node.uv_map = uv_name or (obj.data.uv_layers.active.name if obj and obj.data.uv_layers.active else '')
         norm_node.location = (-100, -950)
-        links.new(uv.outputs["UV"], tex_norm.inputs["Vector"])
+        links.new(coordinates, tex_norm.inputs["Vector"])
         links.new(tex_norm.outputs["Color"], norm_node.inputs["Color"])
         links.new(norm_node.outputs["Normal"], bsdf.inputs["Normal"])
     if height_path:
@@ -177,7 +188,7 @@ def apply_pbr_textures(obj, albedo_path, orm_path=None, material_name="M_UltraTe
         tex_height = nodes.new("ShaderNodeTexImage")
         tex_height.image, tex_height.label = height, "Height"
         tex_height.location = (-400, -1250)
-        links.new(uv.outputs["UV"], tex_height.inputs["Vector"])
+        links.new(coordinates, tex_height.inputs["Vector"])
     if create_only:
         mat.use_fake_user = True
         return mat

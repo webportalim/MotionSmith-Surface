@@ -10,6 +10,13 @@ Created by **Sertan Koç — OneManStudio**.
 
 [Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface.zip) · [Documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html) · [Product page](https://motionsmithai.blogspot.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Surface-Backend)
 
+## Version 0.1.1
+
+- Image-only PBR Material with shared UV Mapping controls for all maps.
+- Texture workflows include detail normal-map generation using DeepBump.
+- Keep Existing UVs is the default; the temporary T1/T2 panel is removed.
+- PBR images must match the target mapping. Use Cube Projection for the crate-photo example; other UV layouts require a matching atlas.
+
 ## Install
 
 1. Download **[motionsmith_surface.zip](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface.zip)**. Keep it zipped.
@@ -24,7 +31,7 @@ The installer is bundled inside the add-on. You can also run [install_motionsmit
 ### Existing ComfyUI and models
 
 - Setup searches local fixed disks for ComfyUI installations, excluding system folders, Python environments and other bulky dependency folders.
-- If an installation has a recognized Python environment and the four required Surface node folders, it can be reused. Otherwise, setup installs a separate Surface backend instead of overwriting the existing installation.
+- If an installation has a recognized Python environment and the five required Surface node folders, it can be reused. Otherwise, setup installs a separate Surface backend instead of overwriting the existing installation.
 - Setup checks discovered model folders and paths configured in `extra_model_paths.yaml`.
 - Existing weights are matched by file size and **SHA-256**, including files with different names. Valid models are reused with hard links where possible; otherwise they are copied locally.
 - Only missing weights are downloaded. Interrupted downloads can resume, and existing destination files are verified before being skipped.
@@ -140,7 +147,7 @@ The **Height** map is retained as a texture node; displacement is not connected 
 - An **NVIDIA GPU** compatible with the bundled CUDA/PyTorch runtime. Memory requirements vary by workflow, model and resolution; testing used an RTX 5070 Ti with 16 GB VRAM.
 - Internet access for initial downloads; model publishers may require account access or license acceptance.
 
-The supplied backend was assembled with ComfyUI 0.27.0, Python 3.12.10 and PyTorch 2.8.0 + CUDA 12.8. It includes the UltraTex, modular UltraTex, Chord and GGUF node packages. Backend binaries and model weights are distributed separately from this source repository.
+The supplied backend was assembled with ComfyUI 0.27.0, Python 3.12.10 and PyTorch 2.8.0 + CUDA 12.8. It includes the UltraTex, modular UltraTex, Chord, GGUF and comfy-mtb node packages. Backend binaries and model weights are distributed separately from this source repository.
 
 ## Repository
 

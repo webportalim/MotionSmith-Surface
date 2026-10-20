@@ -14,6 +14,22 @@ from bpy.types import Panel, PropertyGroup
 from . import model_catalog
 from . import preferences
 from . import camera_utils
+from . import workflow
+
+
+_PBR_DEFAULTS = workflow.material_prompt_defaults()
+_PBR_SAMPLERS = (
+    "euler", "euler_cfg_pp", "euler_ancestral", "euler_ancestral_cfg_pp", "heun", "heunpp2",
+    "exp_heun_2_x0", "exp_heun_2_x0_sde", "dpm_2", "dpm_2_ancestral", "lms", "dpm_fast",
+    "dpm_adaptive", "dpmpp_2s_ancestral", "dpmpp_2s_ancestral_cfg_pp", "dpmpp_sde", "dpmpp_sde_gpu",
+    "dpmpp_2m", "dpmpp_2m_cfg_pp", "dpmpp_2m_sde", "dpmpp_2m_sde_gpu", "dpmpp_2m_sde_heun",
+    "dpmpp_2m_sde_heun_gpu", "dpmpp_3m_sde", "dpmpp_3m_sde_gpu", "ddpm", "lcm", "ipndm", "ipndm_v",
+    "deis", "res_multistep", "res_multistep_cfg_pp", "res_multistep_ancestral",
+    "res_multistep_ancestral_cfg_pp", "gradient_estimation", "gradient_estimation_cfg_pp", "er_sde",
+    "seeds_2", "seeds_3", "sa_solver", "sa_solver_pece", "ddim", "uni_pc", "uni_pc_bh2",
+)
+_PBR_SCHEDULERS = ("simple", "sgm_uniform", "karras", "exponential", "ddim_uniform", "beta",
+                   "normal", "linear_quadratic", "kl_optimal")
 
 
 DEFAULT_SURFACE_PROMPT = (
@@ -54,16 +70,124 @@ def _on_view_resolution_changed(self, context):
         pass
 
 
+def _draw_pbr_prompt_settings(layout, props):
+    box = layout.box()
+    box.enabled = not props.is_generating
+    box.label(text="Reference Image Models", icon="PREFERENCES")
+    box.prop(props, "pbr_unet_name")
+    row = box.row()
+    row.enabled = not props.pbr_unet_name.lower().endswith(".gguf")
+    row.prop(props, "pbr_weight_dtype")
+    box.prop(props, "pbr_clip_name")
+    box.prop(props, "pbr_clip_type")
+    row = box.row()
+    row.enabled = not props.pbr_clip_name.lower().endswith(".gguf")
+    row.prop(props, "pbr_clip_device")
+    box.prop(props, "pbr_vae_name")
+
+    box = layout.box()
+    box.enabled = not props.is_generating
+    box.label(text="Reference Generation", icon="SETTINGS")
+    for name in ("pbr_seed", "pbr_seed_mode", "pbr_steps", "pbr_cfg", "pbr_sampler_name",
+                 "pbr_scheduler", "pbr_denoise", "pbr_shift"):
+        box.prop(props, name)
+
+    box = layout.box()
+    box.enabled = not props.is_generating
+    box.label(text="Reference Image Resolution", icon="IMAGE_DATA")
+    row = box.row(align=True)
+    row.prop(props, "pbr_width")
+    row.prop(props, "pbr_height")
+    box.prop(props, "pbr_batch_size")
+    if props.pbr_batch_size > 1:
+        box.label(text="References are saved; the first is used for painting.", icon="INFO")
+
+    box = layout.box()
+    box.enabled = not props.is_generating
+    box.prop(props, "pbr_show_output_names", emboss=False,
+             icon="TRIA_DOWN" if props.pbr_show_output_names else "TRIA_RIGHT")
+    if props.pbr_show_output_names:
+        box.prop(props, 'pbr_texture_prefix', text='Reference Image')
+
+
 class MotionSmithSurfaceSceneProperties(PropertyGroup):
+    uv_transfer_uv: StringProperty(name="Target UV", description="UV map to export; empty uses the active UV map")
+    uv_transfer_status: StringProperty(default="T1 / T2 not run", options={'SKIP_SAVE'})
+    pbr_mesh_steps: IntProperty(name="Paint Steps", default=25, min=1, max=100)
+    pbr_mesh_view_size: EnumProperty(name="Paint View Size", items=[
+        ('512', '512', 'Hunyuan multiview generation size'),
+        ('1024', '1024', 'Hunyuan multiview generation size'),
+    ], default='512')
+    pbr_mesh_texture_size: EnumProperty(name="BaseColor Size", items=[
+        ('1024', '1024 (1K)', 'UV atlas size'), ('2048', '2048 (2K)', 'UV atlas size'),
+        ('4096', '4096 (4K)', 'UV atlas size'),
+    ], default='2048')
     generation_progress: FloatProperty(default=-1.0, min=-1.0, max=1.0, options={'HIDDEN', 'SKIP_SAVE'})
     generation_remaining: StringProperty(default="", options={'HIDDEN', 'SKIP_SAVE'})
     page: EnumProperty(
         name="Page",
         items=[("TEXTURE", "Texture", "UltraTex mesh texturing"),
-               ("PBR_MATERIAL", "PBR Material", "Convert an image into Chord PBR maps")],
+                 ("PBR_MATERIAL", "PBR Material", "Create material maps from an existing image")],
         default="TEXTURE",
     )
     pbr_image: StringProperty(name="Image", subtype="FILE_PATH", default="")
+    pbr_source: EnumProperty(name="Source", items=[
+        ("IMAGE", "Image", "Paint the mesh using a reference image"),
+        ("PROMPT", "Prompt", "Generate a FLUX reference, then paint the mesh with Hunyuan"),
+    ], default="IMAGE")
+    pbr_prompt: StringProperty(name="Prompt", default=_PBR_DEFAULTS["prompt"])
+    pbr_unet_name: EnumProperty(name="Diffusion (UNET)", items=model_catalog.get_pbr_diffusion_models)
+    pbr_clip_name: EnumProperty(name="Text Encoder (CLIP)", items=model_catalog.get_text_encoders)
+    pbr_vae_name: EnumProperty(name="VAE", items=model_catalog.get_pbr_vae_models)
+    pbr_checkpoint: EnumProperty(name="Chord Model", items=model_catalog.get_pbr_checkpoints)
+    pbr_weight_dtype: EnumProperty(name="Weight Dtype", items=[
+        (v, v, "Diffusion model weight precision") for v in
+        ("default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2")
+    ], default=_PBR_DEFAULTS["weight_dtype"])
+    pbr_clip_type: EnumProperty(name="CLIP Type", items=[
+        (v, v, "Text encoder architecture") for v in (
+            "stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv", "pixart",
+            "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2", "qwen_image",
+            "hunyuan_image", "flux2", "ovis", "longcat_image", "cogvideox", "lens", "pixeldit",
+            "ideogram4", "boogu", "krea2")
+    ], default=_PBR_DEFAULTS["clip_type"])
+    pbr_clip_device: EnumProperty(name="CLIP Device", items=[
+        ("default", "Default", "ComfyUI manages encoder placement"),
+        ("cpu", "CPU", "Keep the text encoder on CPU"),
+    ], default=_PBR_DEFAULTS["clip_device"])
+    pbr_shift: FloatProperty(name="Model Sampling Shift", default=_PBR_DEFAULTS["shift"], min=0.0, max=100.0)
+    pbr_seed: StringProperty(name="Seed", default=_PBR_DEFAULTS["seed"],
+                            description="Unsigned 64-bit seed (0–18446744073709551615)")
+    pbr_seed_mode: EnumProperty(name="After Generate", items=[
+        ("fixed", "Fixed", "Reuse this seed"), ("randomize", "Randomize", "Choose a new seed each run"),
+        ("increment", "Increment", "Increase the seed after queueing"),
+        ("decrement", "Decrement", "Decrease the seed after queueing"),
+    ], default="randomize")
+    pbr_steps: IntProperty(name="Steps", default=_PBR_DEFAULTS["steps"], min=1, max=10000)
+    pbr_cfg: FloatProperty(name="CFG", default=_PBR_DEFAULTS["cfg"], min=0.0, max=100.0)
+    pbr_sampler_name: EnumProperty(name="Sampler", items=[(v, v, v) for v in _PBR_SAMPLERS],
+                                  default=_PBR_DEFAULTS["sampler_name"])
+    pbr_scheduler: EnumProperty(name="Scheduler", items=[(v, v, v) for v in _PBR_SCHEDULERS],
+                               default=_PBR_DEFAULTS["scheduler"])
+    pbr_denoise: FloatProperty(name="Denoise", default=_PBR_DEFAULTS["denoise"], min=0.0, max=1.0)
+    pbr_width: IntProperty(name="Width", default=_PBR_DEFAULTS["width"], min=16, max=16384, step=16)
+    pbr_height: IntProperty(name="Height", default=_PBR_DEFAULTS["height"], min=16, max=16384, step=16)
+    pbr_batch_size: IntProperty(name="Batch Size", default=_PBR_DEFAULTS["batch_size"], min=1, max=4096)
+    pbr_map_width: IntProperty(name="Map Width", default=_PBR_DEFAULTS["map_width"], min=1, max=16384)
+    pbr_map_height: IntProperty(name="Map Height", default=_PBR_DEFAULTS["map_height"], min=1, max=16384)
+    pbr_padding_color: EnumProperty(name="Padding Color", items=[
+        ("white", "White", "Pad with white"), ("black", "Black", "Pad with black")
+    ], default=_PBR_DEFAULTS["padding_color"])
+    pbr_interpolation: EnumProperty(name="Interpolation", items=[
+        (v, v, v) for v in ("area", "bicubic", "nearest-exact", "bilinear", "lanczos")
+    ], default=_PBR_DEFAULTS["interpolation"])
+    pbr_texture_prefix: StringProperty(name="Generated Texture", default=_PBR_DEFAULTS["texture_prefix"])
+    pbr_basecolor_prefix: StringProperty(name="Base Color", default=_PBR_DEFAULTS["basecolor_prefix"])
+    pbr_normal_prefix: StringProperty(name="Normal", default=_PBR_DEFAULTS["normal_prefix"])
+    pbr_metalness_prefix: StringProperty(name="Metalness", default=_PBR_DEFAULTS["metalness_prefix"])
+    pbr_roughness_prefix: StringProperty(name="Roughness", default=_PBR_DEFAULTS["roughness_prefix"])
+    pbr_height_prefix: StringProperty(name="Height", default=_PBR_DEFAULTS["height_prefix"])
+    pbr_show_output_names: BoolProperty(name="Output Names", default=False)
     is_generating: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
     server_online: BoolProperty(
         name="Server Online",
@@ -108,11 +232,11 @@ class MotionSmithSurfaceSceneProperties(PropertyGroup):
         name="Input Mode",
         description="Choose the material guidance supplied to the automatic workflow",
         items=[
-            ("PROMPT", "Prompt Only", "Use text and mesh geometry; no image or camera appearance reference"),
-            ("IMAGE", "Image Only", "Use a reference image or front-camera capture; no positive/negative text guidance"),
-            ("BOTH", "Prompt + Image", "Combine text with a reference image or front-camera capture"),
+            ("IMAGE", "Image Only", "Use a reference image or front-camera capture; no positive/negative text guidance", 1),
+            ("PROMPT", "Prompt Only", "Use text and mesh geometry; no image or camera appearance reference", 0),
+            ("BOTH", "Prompt + Image", "Combine text with a reference image or front-camera capture", 2),
         ],
-        default="BOTH",
+        default="IMAGE",
     )
 
     # --- TEXT GUIDANCE & PROMPTS ---
@@ -319,11 +443,11 @@ class MotionSmithSurfaceSceneProperties(PropertyGroup):
         name="UV Mode",
         description="Mesh UV unwrapping technique",
         items=[
-            ("comfy_gpu", "Comfy GPU", "Fast GPU unwrapper"),
-            ("xatlas", "xatlas (CPU)", "CPU xatlas chart packer"),
-            ("keep_existing", "Keep Existing UVs", "Use object's existing UV coordinates"),
+            ("keep_existing", "Keep Existing UVs", "Use object's existing UV coordinates", 2),
+            ("comfy_gpu", "Comfy GPU", "Fast GPU unwrapper", 0),
+            ("xatlas", "xatlas (CPU)", "CPU xatlas chart packer", 1),
         ],
-        default="comfy_gpu",
+        default="keep_existing",
     )
 
     material_apply_mode: EnumProperty(
@@ -403,6 +527,10 @@ class MotionSmithSurfaceSceneProperties(PropertyGroup):
     use_negative_prompt: BoolProperty(
         name="Enable Negative Prompt / CFG", default=False,
         description="Separate negative conditioning activates FLUX.2 CFG and uses more VRAM and compute",
+    )
+    remove_reference_background: BoolProperty(
+        name="Remove Reference Background", default=False,
+        description="Run BiRefNet on an imported reference; leave off to preserve the image and its existing alpha",
     )
     drop_background_tokens: BoolProperty(name="Drop Background Tokens", default=True)
     memory_factor: FloatProperty(name="Activation Memory Factor", default=0.0, min=0.0, max=200.0,
@@ -503,17 +631,27 @@ class VIEW3D_PT_motionsmith_surface_main(VIEW3D_PT_motionsmith_surface_base):
         if props.page == "PBR_MATERIAL":
             box = layout.box()
             box.label(text="PBR Material", icon="MATERIAL")
-            box.prop(props, "pbr_image")
-            box.label(text="Image -> Base Color / Normal / Roughness / Metalness / Height")
+            col = box.column()
+            col.enabled = not props.is_generating
+            col.prop(props, 'pbr_image')
+            col.prop(props, 'pbr_checkpoint')
+            box.label(text='Image -> BaseColor / Normal / Roughness / Metalness / Height')
+            box.label(text='Uses existing UVs; no automatic projection', icon='INFO')
+            note = box.column(align=True)
+            note.label(text='Crate photo: use Cube Projection UV.', icon='INFO')
+            note.label(text='Other UV layouts require a matching texture atlas.')
             obj = context.active_object
-            if obj and obj.type == 'MESH' and obj.mode == 'OBJECT' and obj.data.uv_layers.active:
+            valid_target = bool(obj and obj.type == 'MESH' and obj.mode == 'OBJECT' and obj.data.uv_layers.active)
+            if valid_target:
                 box.label(text=f"Apply to: {obj.name}", icon="MESH_DATA")
             else:
-                box.label(text="Create material in Blender's material list", icon="MATERIAL")
+                box.label(text="Create material in Blender's material list", icon='MATERIAL')
             row = layout.row()
             row.enabled = bool(alive and props.pbr_image.strip() and not props.is_generating)
             row.scale_y = 1.6
-            row.operator("motionsmith_surface.generate_material", text="Generate PBR Material", icon="MATERIAL")
+            row.operator("motionsmith_surface.generate_material",
+                         text="Generate PBR Material",
+                         icon="MATERIAL")
             if props.is_generating:
                 layout.operator("motionsmith_surface.cancel_generation", text="Cancel", icon="CANCEL")
             if props.last_prompt_id:
@@ -669,6 +807,8 @@ class VIEW3D_PT_motionsmith_surface_main(VIEW3D_PT_motionsmith_surface_base):
             col_prompt.label(text="Positive Prompt:")
             col_prompt.prop(props, "positive_prompt", text="")
             col_prompt.prop(props, "use_negative_prompt")
+            if props.use_negative_prompt:
+                col_prompt.label(text="CFG doubles the sampling batch and increases VRAM use.", icon="INFO")
             negative_row = col_prompt.row()
             negative_row.enabled = props.use_negative_prompt
             negative_row.prop(props, "negative_prompt", text="Negative Prompt")
@@ -676,6 +816,8 @@ class VIEW3D_PT_motionsmith_surface_main(VIEW3D_PT_motionsmith_surface_base):
             box.label(text="Text prompts are not sent in Image Only mode.", icon="INFO")
         if not manual and props.input_mode != "PROMPT":
             box.prop(props, "custom_reference_image")
+            if props.custom_reference_image.strip():
+                box.prop(props, "remove_reference_background")
             if not props.custom_reference_image.strip():
                 box.label(text="No file selected: use the front-camera capture.", icon="INFO")
         elif not manual:
@@ -756,6 +898,7 @@ class VIEW3D_PT_motionsmith_surface_workflow_settings(VIEW3D_PT_motionsmith_surf
         col.separator()
         col.prop(props, "view_resolution")
         col.prop(props, "enable_mr")
+        col.label(text="Normal Map: Enabled")
         mr_col = col.column(align=True)
         mr_col.enabled = props.enable_mr
         mr_col.prop(props, "mr_steps")

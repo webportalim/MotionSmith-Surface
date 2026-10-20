@@ -226,6 +226,31 @@ class ComfyUIClient:
             "vae_name": ("vae",), "decoder_name": ("ultratex",),
             "lora_name": ("loras",), "bg_removal_name": ("background_removal",)}
         for node in prompt.values():
+            if node.get('class_type') == 'Deep Bump (mtb)':
+                model_path = os.path.join(comfyui_dir, 'models', 'deepbump', 'deepbump256.onnx')
+                if not os.path.isfile(model_path):
+                    raise FileNotFoundError(f'Installed normal model not found: {model_path}. No download started.')
+            if node.get('class_type') == 'DownloadAndLoadHy3DPaintModel':
+                model_name = node['inputs']['model']
+                if model_name not in {'hunyuan3d-paint-v2-0', 'hunyuan3d-paint-v2-0-turbo'}:
+                    raise ValueError("Unsupported Hunyuan Paint model.")
+                model_dir = os.path.join(comfyui_dir, 'models', 'diffusers', model_name)
+                required = (
+                    ('unet/config.json',),
+                    ('unet/diffusion_pytorch_model.safetensors', 'unet/diffusion_pytorch_model.bin'),
+                    ('vae/config.json',),
+                    ('vae/diffusion_pytorch_model.safetensors', 'vae/diffusion_pytorch_model.bin'),
+                    ('text_encoder/config.json',),
+                    ('text_encoder/model.safetensors', 'text_encoder/pytorch_model.bin'),
+                    ('tokenizer/vocab.json',), ('tokenizer/merges.txt',),
+                    ('scheduler/scheduler_config.json',), ('feature_extractor/preprocessor_config.json',),
+                )
+                missing = [options[0] for options in required
+                           if not any(os.path.isfile(os.path.join(model_dir, path)) for path in options)]
+                if missing:
+                    raise FileNotFoundError(
+                        f"Hunyuan Paint files are missing in {model_dir}: {', '.join(missing)}. "
+                        "No generation or download was started.")
             for name, value in node.get("inputs", {}).items():
                 if name == "auto_download" and value:
                     raise ValueError("This workflow enables a model download. Disable it before running.")
@@ -250,6 +275,8 @@ class ComfyUIClient:
                 raise FileNotFoundError(f"Workflow output is missing: {path}")
             return path
         result = {}
+        chord = any(node.get("class_type") == "ChordMaterialEstimation" for node in (prompt or {}).values())
+        mesh_paint = any(node.get('class_type') == 'Hy3DBakeFromMultiview' for node in (prompt or {}).values())
         for node_id, output in outputs.items():
             node = (prompt or {}).get(str(node_id), {})
             if not isinstance(output, dict):
@@ -265,19 +292,32 @@ class ComfyUIClient:
                     if os.path.isfile(stem + "_normal.png"):
                         result["normal"] = stem + "_normal.png"
             if node.get("class_type") == "SaveImage":
+                if mesh_paint and (node.get('_meta', {}).get('surface_reference')
+                                   or node.get('_meta', {}).get('surface_diagnostic')):
+                    continue
                 label = node.get("_meta", {}).get("title", "").lower()
-                for record in output.get("images", []):
-                    text = label + " " + record.get("filename", "").lower()
-                    kind = next((kind for kind in ("roughness", "metallic", "albedo", "normal", "height")
-                                 if kind in text), None)
+                if chord and label == "generated texture":
+                    continue
+                records = output.get("images", [])
+                # Keep the same first batch item across all PBR maps.
+                for record in records[:1] if chord else records:
+                    text = (label if chord and label.startswith("chord ")
+                            else label + " " + record.get("filename", "").lower())
+                    kind = node.get('_meta', {}).get('surface_map')
+                    if not kind:
+                        kind = next((kind for kind in ("roughness", "metallic", "albedo", "normal", "height")
+                                     if kind in text), None)
                     if not kind and any(word in text for word in ("base_color", "base color", "basecolor")):
                         kind = "albedo"
                     if not kind and "metalness" in text:
                         kind = "metallic"
                     if kind:
                         result[kind] = path_for(record)
-        chord = any(node.get("class_type") == "ChordMaterialEstimation" for node in (prompt or {}).values())
-        required_maps = ("albedo", "normal", "roughness", "metallic", "height") if chord else ("glb", "albedo")
+        required_maps = (("albedo",) if mesh_paint else
+                         ("albedo", "normal", "roughness", "metallic", "height") if chord else ("glb", "albedo"))
+        required_maps = set(required_maps)
+        required_maps.update(node.get('_meta', {}).get('surface_map') for node in (prompt or {}).values()
+                             if node.get('_meta', {}).get('surface_map'))
         for required in required_maps:
             if not result.get(required) or not os.path.isfile(result[required]):
                 raise FileNotFoundError(f"This prompt returned no usable {required} output: {result.get(required)}")

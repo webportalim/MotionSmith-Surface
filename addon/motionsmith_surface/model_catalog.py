@@ -113,3 +113,15 @@ def get_lora_mr_models(self, context):
 
 def get_bg_removal_models(self, context):
     return scan_category("background_removal", "birefnet.safetensors", context)
+
+
+def get_pbr_diffusion_models(self, context):
+    return scan_category("diffusion_models", "flux-2-klein-9b-fp8.safetensors", context)
+
+
+def get_pbr_vae_models(self, context):
+    return scan_category("vae", "ae_flux2.safetensors", context)
+
+
+def get_pbr_checkpoints(self, context):
+    return scan_category("checkpoints", "SD/chord_v1.safetensors", context)

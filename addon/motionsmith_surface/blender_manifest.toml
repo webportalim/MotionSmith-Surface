@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "motionsmith_surface"
-version = "0.1.0"
+version = "0.1.1"
 name = "MotionSmith Surface"
 tagline = "AI PBR Texturing and Material Generation for Blender"
 maintainer = "MotionSmith"

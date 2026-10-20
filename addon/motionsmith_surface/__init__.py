@@ -8,7 +8,7 @@ from __future__ import annotations
 bl_info = {
     "name": "MotionSmith Surface",
     "author": "MotionSmith",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar > Surface",
     "description": "AI PBR Texturing and Material Generation for Blender",
@@ -20,7 +20,7 @@ if "bpy" in locals():
     import importlib
     import sys
     for _name in ("model_catalog", "preferences", "client", "workflow", "camera_utils",
-                  "material_utils", "ui_panel", "operators"):
+                  "material_utils", "uv_transfer", "ui_panel", "operators"):
         _module = sys.modules.get(f"{__package__}.{_name}")
         if _module is not None:
             importlib.reload(_module)

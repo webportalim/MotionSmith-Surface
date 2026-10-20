@@ -17,6 +17,7 @@ from . import model_catalog
 from . import preferences
 from . import server_manager
 from . import workflow
+from . import uv_transfer
 
 
 def tag_redraw():
@@ -28,6 +29,88 @@ def tag_redraw():
 
 
 _ACTIVE_JOBS = {}
+_UV_TRANSFER_CHECKS = {}
+
+
+class MOTIONSMITH_SURFACE_OT_uv_transfer_check(Operator):
+    bl_idname = "motionsmith_surface.uv_transfer_check"
+    bl_label = "UV Transfer Check"
+    bl_description = "Check GLB/Trimesh UV transport offline, without AI or changing the source mesh"
+
+    action: StringProperty(default="VALIDATE", options={'HIDDEN'})
+
+    def execute(self, context):
+        import json
+        import subprocess
+        props = context.scene.motionsmith_surface_props
+        key = context.scene.as_pointer()
+        state = _UV_TRANSFER_CHECKS.get(key)
+        try:
+            if props.is_generating:
+                raise ValueError("Wait for the current generation to finish.")
+            if self.action == 'CLEAR':
+                if state:
+                    uv_transfer.clear_preview(state)
+                props.uv_transfer_status = "Checker preview removed."
+                return {'FINISHED'}
+            if self.action == 'VALIDATE':
+                if state:
+                    uv_transfer.clear_preview(state)
+                _UV_TRANSFER_CHECKS.pop(key, None)
+                obj = context.active_object
+                if not obj or obj.type != 'MESH':
+                    raise ValueError("Select the original mesh.")
+                uv_name = props.uv_transfer_uv or (obj.data.uv_layers.active.name
+                                                    if obj.data.uv_layers.active else "")
+                prefs = preferences.get_preferences(context)
+                comfyui_dir = preferences.get_comfyui_dir(context)
+                python = bpy.path.abspath(prefs.python_executable) if prefs and prefs.python_executable else os.path.join(
+                    comfyui_dir, '.venv', 'Scripts' if os.name == 'nt' else 'bin',
+                    'python.exe' if os.name == 'nt' else 'python')
+                if not os.path.isfile(python):
+                    raise FileNotFoundError("Configure the ComfyUI Python executable first.")
+                directory = os.path.join(comfyui_dir, 'input', 'MotionSmith_Surface',
+                                         'uv_check_' + uuid.uuid4().hex[:12])
+                state = uv_transfer.export_snapshot(context, obj, uv_name, directory)
+                result = subprocess.run(
+                    [python, os.path.abspath(uv_transfer.__file__), directory],
+                    capture_output=True, text=True, timeout=45,
+                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                lines = result.stdout.strip().splitlines()
+                if not lines:
+                    raise RuntimeError(result.stderr.strip()[-800:] or "The UV validator returned no result.")
+                details = json.loads(lines[-1])
+                if result.returncode or not details.get('ok'):
+                    raise ValueError(details.get('error', result.stderr[-800:]))
+                uv_transfer.assert_unchanged(context, state)
+                state['details'] = details
+                _UV_TRANSFER_CHECKS[key] = state
+                props.uv_transfer_status = (f"T1 PASS: {details['triangles']} triangles, UV '{uv_name}'. "
+                                            "T2 visual check pending.")
+                print('[MotionSmith Surface] UV transfer:', json.dumps(details), directory)
+            else:
+                if not state:
+                    raise ValueError("Run T1 Validate Transfer first.")
+                uv_transfer.assert_unchanged(context, state)
+                if context.active_object != state['target']:
+                    raise ValueError("Select the original T1 target mesh.")
+                if self.action == 'PREVIEW':
+                    uv_transfer.preview_checker(context, state)
+                    state['checker_accepted'] = False
+                    props.uv_transfer_status = "T1 PASS. Compare SOURCE / TRIMESH copies; T2 visual check pending."
+                elif self.action == 'ACCEPT':
+                    if not state.get('preview_objects'):
+                        raise ValueError("Show the checker copies before confirming T2.")
+                    state['checker_accepted'] = True
+                    props.uv_transfer_status = "T1 PASS; T2 checker visually confirmed by user."
+                else:
+                    raise ValueError("Unknown UV check action.")
+            self.report({'INFO'}, props.uv_transfer_status)
+            return {'FINISHED'}
+        except Exception as exc:
+            props.uv_transfer_status = f"UV check stopped: {exc}"
+            self.report({'ERROR'}, str(exc))
+            return {'CANCELLED'}
 
 
 def _finish_job(job, message=None):
@@ -146,6 +229,8 @@ def _job_state(operator, context):
     names = ("_client", "_prompt_id", "_start_time", "_target", "_scene",
              "_prompt_graph", "_uv_mode", "_uv_name", "_comfyui_dir", "_timer")
     values = {name: getattr(operator, name) for name in names}
+    if getattr(operator, '_transfer_state', None) is not None:
+        values['_transfer_state'] = operator._transfer_state
     return SimpleNamespace(**values, _wm=context.window_manager, done=False,
                            report=lambda levels, message: print(f"[MotionSmith Surface] {message}"))
 
@@ -405,21 +490,51 @@ class MOTIONSMITH_SURFACE_OT_generate_texture(Operator):
 
     def apply_result(self, context, outputs):
         obj = self._target
+        if any(node.get('class_type') == 'Hy3DBakeFromMultiview' for node in self._prompt_graph.values()):
+            metadata = next((node.get('_meta', {}).get('surface_transfer')
+                             for node in self._prompt_graph.values()
+                             if node.get('class_type') == 'SaveImage'
+                             and node.get('_meta', {}).get('surface_transfer')), None)
+            state = getattr(self, '_transfer_state', None) or _UV_TRANSFER_CHECKS.get(self._scene.as_pointer())
+            if not state or not metadata or any(state.get(key) != metadata.get(key)
+                                                for key in ('directory', 'fingerprint', 'uv_name', 'glb_hash')):
+                raise ValueError("The original transfer snapshot is unavailable. Rerun T1/T2 and regenerate.")
+            if obj != state['target'] or not state.get('checker_accepted'):
+                raise ValueError("The original mesh and its confirmed T2 check are required.")
+            uv_transfer.assert_unchanged(context, state)
+            uv_transfer.assert_input_unchanged(state)
+            if obj.data.users > 1 or len(obj.material_slots) > 1:
+                raise ValueError("Mesh painting requires a single material slot and unshared mesh data.")
+            files = self._client.resolve_bake_outputs(outputs, self._prompt_graph, self._comfyui_dir)
+            material_utils.apply_pbr_textures(
+                obj, files['albedo'], material_name=f"M_Surface_BaseColor_{self._prompt_id[:12]}",
+                uv_name=state['uv_name'], slot_policy='ACTIVE_SLOT',
+                normal_path=files.get('normal'), roughness_path=files.get('roughness'),
+                metallic_path=files.get('metallic'), height_path=files.get('height'))
+            material_utils.set_viewport_material_shading(context)
+            self._scene.motionsmith_surface_props.generation_status = f"Baked textures applied to {obj.name}"
+            self.report({'INFO'}, f"Baked textures applied to {obj.name}; original UV preserved.")
+            return
         if any(node.get("class_type") == "ChordMaterialEstimation" for node in self._prompt_graph.values()):
             files = self._client.resolve_bake_outputs(outputs, self._prompt_graph, self._comfyui_dir)
-            if obj is not None:
-                if obj.name not in self._scene.objects:
-                    raise ValueError("The target mesh was removed from the scene.")
-                if self._uv_name not in obj.data.uv_layers:
-                    raise ValueError("The target no longer has its original UV map.")
+            # Restore direct image-to-material application. Old Flux-only results
+            # remain standalone: a character picture is not a UV texture atlas.
+            target = obj if not any(n.get('class_type') == 'KSampler'
+                                    for n in self._prompt_graph.values()) else None
+            if target is not None:
+                if self._scene.objects.get(target.name) != target:
+                    raise ValueError('The original target mesh is no longer in the scene.')
+                if self._uv_name not in target.data.uv_layers:
+                    raise ValueError('The original target UV map no longer exists.')
             mat = material_utils.apply_pbr_textures(
-                obj, files["albedo"], material_name=f"M_Chord_{self._prompt_id[:12]}",
+                target, files["albedo"], material_name=f"M_Chord_{self._prompt_id[:12]}",
                 uv_name=self._uv_name, roughness_path=files["roughness"],
                 metallic_path=files["metallic"], normal_path=files["normal"],
-                height_path=files["height"], create_only=obj is None,
+                height_path=files["height"], create_only=target is None,
                 slot_policy="ACTIVE_SLOT")
-            material_utils.set_viewport_material_shading(context)
-            message = f"Applied to {obj.name}" if obj else f"Created {mat.name}"
+            if target is not None:
+                material_utils.set_viewport_material_shading(context)
+            message = f"Applied PBR material to {target.name}" if target else f"Created {mat.name}"
             self._scene.motionsmith_surface_props.generation_status = message
             self.report({'INFO'}, message)
             return
@@ -577,6 +692,7 @@ class MOTIONSMITH_SURFACE_OT_generate_texture(Operator):
             settings = dict(
                 input_mode=input_mode,
                 reference_is_render=reference_is_render,
+                remove_reference_background=props.remove_reference_background,
                 positive_prompt=props.positive_prompt, negative_prompt=props.negative_prompt,
                 unet_name=props.unet_model, clip_name=props.clip_model,
                 vae_name=props.vae_model, decoder_name=props.decoder_model,
@@ -648,7 +764,7 @@ class MOTIONSMITH_SURFACE_OT_generate_texture(Operator):
 class MOTIONSMITH_SURFACE_OT_generate_material(Operator):
     bl_idname = "motionsmith_surface.generate_material"
     bl_label = "Generate PBR Material"
-    bl_description = "Convert an image into Chord PBR maps and create a Blender material"
+    bl_description = "Create material maps from an existing texture image and use the selected mesh's existing UVs"
 
     # Registered Blender operators must not inherit another registered operator:
     # registering the child replaces the parent's RNA Python class association.
@@ -675,42 +791,42 @@ class MOTIONSMITH_SURFACE_OT_generate_material(Operator):
             c_client = client.ComfyUIClient(prefs.server_url if prefs else "http://127.0.0.1:8188")
             if not c_client.is_connected():
                 raise RuntimeError("Start ComfyUI first.")
-            # Use the server's model identifiers, including its native path separators.
+            run_id = uuid.uuid4().hex[:12]
+            self._transfer_state = None
             import json
             import urllib.request
-            with urllib.request.urlopen(f"{c_client.server_url}/object_info/ChordLoadModel", timeout=5) as response:
+            with urllib.request.urlopen(f'{c_client.server_url}/object_info/ChordLoadModel', timeout=5) as response:
                 info = json.load(response)
-            field = info.get("ChordLoadModel", {}).get("input", {}).get("required", {}).get("ckpt_name", [[]])
-            choices = (field[1].get("options", []) if field[0] == "COMBO" and len(field) > 1
+            field = info.get('ChordLoadModel', {}).get('input', {}).get('required', {}).get('ckpt_name', [[]])
+            choices = (field[1].get('options', []) if field[0] == 'COMBO' and len(field) > 1
                        else field[0] if isinstance(field[0], list) else [])
-            checkpoint = next((name for name in choices
-                               if name.replace("\\", "/").split("/")[-1] == "chord_v1.safetensors"), None)
+            selected = props.pbr_checkpoint.replace('\\', '/')
+            checkpoint = next((name for name in choices if name.replace('\\', '/') == selected), None)
             if not checkpoint:
-                raise FileNotFoundError("Chord node or chord_v1.safetensors checkpoint is unavailable on the server.")
-            run_id = uuid.uuid4().hex[:12]
-            run_dir = os.path.join(comfyui_dir, "input", "MotionSmith_Surface", run_id)
-            os.makedirs(run_dir, exist_ok=True)
-            input_name = "material" + os.path.splitext(image_path)[1]
-            shutil.copy2(image_path, os.path.join(run_dir, input_name))
+                raise FileNotFoundError('The selected Chord model is unavailable on the server.')
+            run_dir = os.path.join(comfyui_dir, 'input', 'MotionSmith_Surface', run_id)
+            input_name = 'material' + os.path.splitext(image_path)[1]
             prompt = workflow.build_material_prompt(
-                f"MotionSmith_Surface/{run_id}/{input_name}", checkpoint, f"Chord/{run_id}")
+                f'MotionSmith_Surface/{run_id}/{input_name}', checkpoint, f'Chord/{run_id}')
             c_client.validate_local_models(prompt, comfyui_dir)
+            os.makedirs(run_dir, exist_ok=True)
+            shutil.copy2(image_path, os.path.join(run_dir, input_name))
             obj = context.active_object
-            target = obj if (obj and obj.type == "MESH" and obj.mode == 'OBJECT'
-                             and obj.data.uv_layers.active and obj.data.polygons) else None
+            target = obj if (obj and obj.type == 'MESH' and obj.mode == 'OBJECT'
+                             and obj.data.polygons and obj.data.uv_layers.active) else None
             success, prompt_id, response = c_client.queue_prompt(prompt)
             if not success:
                 raise RuntimeError(prompt_id)
             self._scene, self._target = context.scene, target
             self._client, self._prompt_id, self._prompt_graph = c_client, prompt_id, prompt
             self._uv_mode = "keep_existing"
-            self._uv_name = target.data.uv_layers.active.name if target else ""
+            self._uv_name = target.data.uv_layers.active.name if target else ''
             self._comfyui_dir, self._start_time = comfyui_dir, time.time()
             props.last_prompt_id, props.last_target_name = prompt_id, target.name if target else ""
             props.is_generating = True
             props.generation_progress = -1.0
             props.generation_remaining = ""
-            props.generation_status = "Generating PBR material..."
+            props.generation_status = 'Generating PBR material maps from image...'
             if bpy.app.background:
                 success, message, outputs = c_client.poll_execution(prompt_id, timeout=3600, interval=1)
                 if not success:
@@ -847,6 +963,7 @@ class MOTIONSMITH_SURFACE_OT_recover_result(Operator):
 
 
 classes = (
+    MOTIONSMITH_SURFACE_OT_uv_transfer_check,
     MOTIONSMITH_SURFACE_OT_server_start,
     MOTIONSMITH_SURFACE_OT_server_stop,
     MOTIONSMITH_SURFACE_OT_server_status,
@@ -866,6 +983,9 @@ def register():
 
 
 def unregister():
+    for state in _UV_TRANSFER_CHECKS.values():
+        uv_transfer.clear_preview(state)
+    _UV_TRANSFER_CHECKS.clear()
     for job in list(_ACTIVE_JOBS.values()):
         _finish_job(job)
         if bpy.app.timers.is_registered(job.poll_callback):

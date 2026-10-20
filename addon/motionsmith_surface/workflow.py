@@ -2,7 +2,8 @@
 
 The JSON files own graph connections and widget defaults. Blender supplies its
 mesh/camera inputs and overrides the settings exposed by the add-on. Optional
-preview/postprocess branches, including Deep Bump's downloader, are excluded.
+preview branches and automatic model downloads are excluded. Detail normals
+and baked-atlas PBR estimation are attached explicitly after the final UV bake.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from typing import Any, Dict, List
 
 WORKFLOW_FILES = {
     "PBR_MATERIAL": "image_to_material.json",
+    "PBR_PROMPT": "Flux2_image_to_material.json",
     "6_VIEWS": "UltraTex - 1 Standard 6 views PBR.json",
     "10_VIEWS": "UltraTex - 2 Advanced 10 views PBR.json",
     "MANUAL_10_VIEWS": "UltraTex_Manual_10_Views_PBR.json",
@@ -27,6 +29,12 @@ _WIDGET_FIELDS = {
     "ChordLoadModel": ("ckpt_name",),
     "ChordMaterialEstimation": (),
     "ChordNormalToHeight": (),
+    "ModelSamplingAuraFlow": ("shift",),
+    "ConditioningZeroOut": (),
+    "VAEDecode": (),
+    "KSampler": ("seed", None, "steps", "cfg", "sampler_name", "scheduler", "denoise"),
+    "EmptySD3LatentImage": ("width", "height", "batch_size"),
+    "ResizeAndPadImage": ("target_width", "target_height", "padding_color", "interpolation"),
     "LoadImage": ("image", None),
     "UltraTexLoadMesh": ("glb_path", "only_vertices_and_faces"),
     "LoadBackgroundRemovalModel": ("bg_removal_name",),
@@ -125,7 +133,7 @@ def _load_prompt(workflow_id, workflow_dir):
         raise ValueError(f"Expected a ComfyUI UI workflow: {path}")
     source_nodes = {str(node["id"]): node for node in document["nodes"]}
     links = {link[0]: link for link in document["links"]}
-    output_types = ({"SaveImage"} if workflow_id == "PBR_MATERIAL" else
+    output_types = ({"SaveImage"} if workflow_id in {"PBR_MATERIAL", "PBR_PROMPT"} else
                     {"SaveGLB", "SaveImage"} if workflow_id == "LOW_VRAM_GGUF" else {"UltraTexBake"})
     output_ids = [key for key, node in source_nodes.items() if node["type"] in output_types]
     if not output_ids:
@@ -176,6 +184,181 @@ def build_material_prompt(image_name, checkpoint_name, output_prefix):
     for _, node in _nodes(prompt, "SaveImage"):
         suffix = node["inputs"]["filename_prefix"]
         node["inputs"]["filename_prefix"] = f"{output_prefix}/{suffix}"
+    return prompt
+
+
+_PBR_PROMPT_FIELDS = {
+    "prompt": ("4", "text"),
+    "unet_name": ("1", "unet_name"), "weight_dtype": ("1", "weight_dtype"),
+    "clip_name": ("3", "clip_name"), "clip_type": ("3", "type"), "clip_device": ("3", "device"),
+    "vae_name": ("8", "vae_name"), "checkpoint": ("12", "ckpt_name"),
+    "shift": ("2", "shift"),
+    "seed": ("7", "seed"), "steps": ("7", "steps"), "cfg": ("7", "cfg"),
+    "sampler_name": ("7", "sampler_name"), "scheduler": ("7", "scheduler"),
+    "denoise": ("7", "denoise"),
+    "width": ("6", "width"), "height": ("6", "height"), "batch_size": ("6", "batch_size"),
+    "map_width": ("11", "target_width"), "map_height": ("11", "target_height"),
+    "padding_color": ("11", "padding_color"), "interpolation": ("11", "interpolation"),
+    "texture_prefix": ("10", "filename_prefix"), "basecolor_prefix": ("14", "filename_prefix"),
+    "normal_prefix": ("15", "filename_prefix"), "metalness_prefix": ("16", "filename_prefix"),
+    "roughness_prefix": ("17", "filename_prefix"), "height_prefix": ("19", "filename_prefix"),
+}
+
+
+def _add_detail_normal(prompt, image_link, output_prefix):
+    prompt['surface_deepbump'] = {
+        'class_type': 'Deep Bump (mtb)',
+        'inputs': dict(image=image_link, mode='Color to Normals', color_to_normals_overlap='MEDIUM',
+                       normals_to_curvature_blur_radius='SMALLEST', normals_to_height_seamless=True,
+                       auto_download=False),
+        '_meta': {'title': 'Generate texture detail normal'},
+    }
+    prompt['surface_normal'] = {
+        'class_type': 'SaveImage',
+        'inputs': {'images': ['surface_deepbump', 0], 'filename_prefix': output_prefix + '_normal'},
+        '_meta': {'title': 'Surface Normal', 'surface_map': 'normal'},
+    }
+    return 'surface_normal'
+
+
+def _add_mesh_pbr_maps(prompt, image_link, output_prefix, checkpoint):
+    prompt['surface_chord'] = {
+        'class_type': 'ChordLoadModel',
+        'inputs': {'ckpt_name': str(checkpoint or 'SD/chord_v1.safetensors').replace('/', os.sep).replace('\\', os.sep)},
+    }
+    prompt['surface_estimate'] = {
+        'class_type': 'ChordMaterialEstimation',
+        'inputs': {'chord_model': ['surface_chord', 0], 'image': image_link},
+        '_meta': {'title': 'Estimate PBR maps from baked UV texture'},
+    }
+    prompt['surface_height'] = {
+        'class_type': 'ChordNormalToHeight', 'inputs': {'normal': ['surface_estimate', 1]},
+    }
+    for name, link in (('normal', ['surface_estimate', 1]), ('roughness', ['surface_estimate', 2]),
+                       ('metallic', ['surface_estimate', 3]), ('height', ['surface_height', 0])):
+        prompt['surface_save_' + name] = {
+            'class_type': 'SaveImage',
+            'inputs': {'images': link, 'filename_prefix': output_prefix + '_' + name},
+            '_meta': {'title': 'Surface ' + name.title(), 'surface_map': name},
+        }
+
+
+def build_mesh_basecolor_prompt(mesh_path, reference_image_name, output_prefix, transfer, *,
+                               steps=25, view_size=512, texture_size=2048, seed=1024, checkpoint=None):
+    """Paint an existing UV mesh and derive PBR maps from its final baked atlas."""
+    with open(Path(__file__).with_name('workflows') / 'hy3d_mesh_basecolor.json', encoding='utf-8') as handle:
+        prompt = json.load(handle)
+    if not os.path.isfile(mesh_path):
+        raise FileNotFoundError("The validated transfer GLB is missing. Run T1/T2 again.")
+    if not 0 <= int(seed) <= 0xffffffffffffffff:
+        raise ValueError("Seed must be between 0 and 18446744073709551615.")
+    if int(view_size) not in (512, 1024) or int(texture_size) not in (1024, 2048, 4096) or not 1 <= int(steps) <= 100:
+        raise ValueError("Unsupported mesh-paint resolution or step count.")
+    prompt['1']['inputs']['glb_path'] = os.path.abspath(mesh_path)
+    prompt['2']['inputs']['image'] = reference_image_name
+    prompt['3']['inputs'].update(target_width=int(view_size), target_height=int(view_size))
+    prompt['5']['inputs']['texture_size'] = int(texture_size)
+    prompt['8']['inputs'].update(view_size=int(view_size), steps=int(steps), seed=int(seed))
+    prompt['9']['inputs'].update(width=int(texture_size), height=int(texture_size))
+    prompt['13']['inputs']['filename_prefix'] = output_prefix
+    prompt['13']['_meta']['surface_transfer'] = dict(
+        directory=transfer['directory'], fingerprint=transfer['fingerprint'],
+        uv_name=transfer['uv_name'], glb_hash=transfer['glb_hash'])
+    for node_id, name in (('14', 'paint_views'), ('15', 'initial_bake'), ('17', 'bake_coverage')):
+        prompt[node_id]['inputs']['filename_prefix'] = f'{output_prefix}_{name}'
+    _add_mesh_pbr_maps(prompt, ['12', 0], output_prefix, checkpoint)
+    return prompt
+
+
+def build_prompt_mesh_basecolor_prompt(mesh_path, output_prefix, transfer, *,
+                                      paint_steps=25, paint_view_size=512,
+                                      paint_texture_size=2048, **settings):
+    """Use FLUX's decoded image as the reference for the existing mesh-paint graph."""
+    # Keep the original reference-generation controls, without executing Chord.
+    reference_fields = {name for name, (node_id, _) in _PBR_PROMPT_FIELDS.items()
+                        if node_id in {'1', '2', '3', '4', '6', '7', '8', '10'}}
+    reference = build_prompt_material_prompt(
+        output_prefix + '/reference', **{key: value for key, value in settings.items() if key in reference_fields})
+    reference = _prune_graph(reference, ['10'])
+    paint = build_mesh_basecolor_prompt(
+        mesh_path, '', output_prefix + '/basecolor', transfer, steps=paint_steps,
+        view_size=paint_view_size, texture_size=paint_texture_size, seed=int(settings.get('seed', 1024)),
+        checkpoint=settings.get('checkpoint'))
+
+    def renamed(graph, prefix):
+        result = {}
+        for node_id, node in graph.items():
+            inputs = {}
+            for name, value in node['inputs'].items():
+                if (isinstance(value, list) and len(value) == 2
+                        and isinstance(value[0], str) and value[0] in graph):
+                    value = [prefix + value[0], value[1]]
+                inputs[name] = value
+            result[prefix + node_id] = dict(node, inputs=inputs)
+        return result
+
+    prompt = renamed(reference, 'ref_')
+    prompt.update(renamed(paint, 'paint_'))
+    # Feed the generated image directly, never apply that image to the target UV.
+    del prompt['paint_2']
+    prompt['reference_first'] = {
+        'class_type': 'ImageFromBatch',
+        'inputs': {'image': ['ref_9', 0], 'batch_index': 0, 'length': 1},
+        '_meta': {'title': 'First prompt reference'},
+    }
+    prompt['paint_3']['inputs']['image'] = ['reference_first', 0]
+    prompt['ref_10']['_meta']['title'] = 'Prompt Reference Image'
+    prompt['ref_10']['_meta']['surface_reference'] = True
+    prompt['paint_8']['_meta'] = {'title': 'Paint mesh views from prompt reference'}
+    prompt['paint_13']['_meta']['title'] = 'Surface Albedo'
+    return prompt
+
+
+def material_prompt_defaults():
+    """Read the supplied workflow's widget defaults, including its 64-bit seed."""
+    prompt, _ = _load_prompt("PBR_PROMPT", None)
+    defaults = {name: prompt[node_id]["inputs"][field]
+                for name, (node_id, field) in _PBR_PROMPT_FIELDS.items()}
+    defaults["seed"] = str(defaults["seed"])
+    return defaults
+
+
+def build_prompt_material_prompt(output_prefix, **settings):
+    """Generate a texture with FLUX.2 and estimate its PBR maps with Chord."""
+    prompt, _ = _load_prompt("PBR_PROMPT", None)
+    for name, (node_id, field) in _PBR_PROMPT_FIELDS.items():
+        if name in settings:
+            prompt[node_id]["inputs"][field] = settings[name]
+    seed = int(prompt["7"]["inputs"]["seed"])
+    if not 0 <= seed <= 0xffffffffffffffff:
+        raise ValueError("Seed must be between 0 and 18446744073709551615.")
+    prompt["7"]["inputs"]["seed"] = seed
+    if not str(prompt["4"]["inputs"]["text"]).strip():
+        raise ValueError("Enter a material prompt.")
+    for field in ("width", "height"):
+        value = int(prompt["6"]["inputs"][field])
+        if not 16 <= value <= 16384 or value % 16:
+            raise ValueError("Generation width and height must be multiples of 16 (16–16384).")
+        prompt["6"]["inputs"][field] = value
+    _select_loader(prompt, str(prompt["1"]["inputs"]["unet_name"]),
+                   str(prompt["3"]["inputs"]["clip_name"]))
+    for node_id, field, setting in (("1", "weight_dtype", "weight_dtype"),
+                                    ("3", "type", "clip_type"), ("3", "device", "clip_device")):
+        if (node_id == "1" and prompt[node_id]["class_type"] == "UnetLoaderGGUF") or (
+                field == "device" and prompt[node_id]["class_type"] == "CLIPLoaderGGUF"):
+            continue
+        prompt[node_id]["inputs"][field] = settings.get(setting, "flux2" if field == "type" else "default")
+    for node_id, field in (("1", "unet_name"), ("3", "clip_name"),
+                           ("8", "vae_name"), ("12", "ckpt_name")):
+        prompt[node_id]["inputs"][field] = str(prompt[node_id]["inputs"][field]).replace("/", os.sep).replace("\\", os.sep)
+    labels = {"10": "Generated Texture", "14": "Chord Base Color", "15": "Chord Normal",
+              "16": "Chord Metallic", "17": "Chord Roughness", "19": "Chord Height"}
+    for node_id, label in labels.items():
+        suffix = str(prompt[node_id]["inputs"]["filename_prefix"]).strip().replace("\\", "/")
+        if not suffix or os.path.isabs(suffix) or ".." in suffix.split("/"):
+            raise ValueError("Output names must be non-empty paths inside this generation's output folder.")
+        prompt[node_id]["inputs"]["filename_prefix"] = f"{output_prefix}/{suffix}"
+        prompt[node_id]["_meta"]["title"] = label
     return prompt
 
 
@@ -279,12 +462,13 @@ def build_workflow_prompt(
         node["inputs"]["bg_removal_name"] = models["bg_removal_name"]
 
     reference_is_render = bool(settings.get("reference_is_render", True))
+    use_reference_alpha = reference_is_render or not settings.get("remove_reference_background", True)
     for _, node in _nodes(prompt, "UltraTexPrep"):
-        node["inputs"].update(render_size=int(settings.get("render_size", 4096)), atlas_size=texture_size, uv_mode=settings.get("uv_mode", "comfy_gpu"), reference_alignment=settings.get("reference_alignment", "fit_front_silhouette"))
+        node["inputs"].update(render_size=int(settings.get("render_size", 4096)), atlas_size=int(settings.get("atlas_size", node["inputs"].get("atlas_size", 4096))), uv_mode=settings.get("uv_mode", "comfy_gpu"), reference_alignment=settings.get("reference_alignment", "fit_front_silhouette"))
         if not use_reference:
             node["inputs"].pop("reference_image", None)
             node["inputs"].pop("reference_mask", None)
-        elif reference_is_render:
+        elif use_reference_alpha:
             node["inputs"].update(reference_mask=[reference_id, 1], mask_meaning="background (LoadImage)")
         elif "mask_meaning" in settings:
             node["inputs"]["mask_meaning"] = settings["mask_meaning"]
@@ -332,7 +516,7 @@ def build_workflow_prompt(
             if not use_reference:
                 node["inputs"].pop("reference", None)
                 node["inputs"].pop("mask", None)
-            elif reference_is_render:
+            elif use_reference_alpha:
                 node["inputs"].update(mask=[reference_id, 1], mask_polarity="background")
         for _, node in _nodes(prompt, "UTXGenerateTextureViewsV23"):
             mr = node["inputs"]["task"] == "mr"
@@ -361,6 +545,11 @@ def build_workflow_prompt(
             node["_meta"]["title"] = f"{map_name.title()} Texture"
         if not enable_mr:
             output_ids = [node_id for node_id in output_ids if node_id not in {"22", "23"}]
+    bakes = [(key, node) for key, node in prompt.items()
+             if node['class_type'] in {'UltraTexBake', 'UTXBakeTextureV26'}]
+    if len(bakes) != 1:
+        raise ValueError('Expected one final UV bake for normal generation.')
+    output_ids.append(_add_detail_normal(prompt, [bakes[0][0], 1], output_prefix))
     return _prune_graph(prompt, output_ids)
 
 
