@@ -8,7 +8,7 @@ Create textures for a selected mesh or extract PBR material maps from a single i
 
 Created by **Sertan Koç — OneManStudio**.
 
-[Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface.zip) · [Documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html) · [Product page](https://motionsmithai.blogspot.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Surface-Backend)
+[Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface_0.1.1.zip) · [Documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html) · [Product page](https://motionsmithai.blogspot.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Surface-Backend)
 
 ## Version 0.1.1
 
@@ -19,7 +19,7 @@ Created by **Sertan Koç — OneManStudio**.
 
 ## Install
 
-1. Download **[motionsmith_surface.zip](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface.zip)**. Keep it zipped.
+1. Download **[motionsmith_surface_0.1.1.zip](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface_0.1.1.zip)**. Keep it zipped.
 2. In Blender, open **Edit → Preferences → Add-ons → Install from Disk**, select the ZIP and enable **MotionSmith Surface**.
 3. Expand the add-on preferences and click **Install** under **Backend & Models Setup**.
 4. Follow the setup window. It searches for existing ComfyUI installations, suggests an installation folder, and downloads missing files.
@@ -153,7 +153,7 @@ The supplied backend was assembled with ComfyUI 0.27.0, Python 3.12.10 and PyTor
 
 ```text
 addon/motionsmith_surface/         Blender add-on source, workflows and bundled installer
-motionsmith_surface.zip            Installable Blender add-on
+motionsmith_surface_0.1.1.zip            Installable Blender add-on
 install_motionsmith_surface.bat    Standalone backend/model installer
 package_addon.py                   Rebuild the add-on ZIP
 ```
