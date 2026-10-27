@@ -615,7 +615,11 @@ class VIEW3D_PT_motionsmith_surface_main(VIEW3D_PT_motionsmith_surface_base):
         else:  # OFFLINE
             row = box.row(align=True)
             row.label(text="Server: Offline", icon="CANCEL")
-            row.operator("motionsmith_surface.server_status", text="", icon="FILE_REFRESH")
+            row.operator("motionsmith_surface.server_status", text="Refresh", icon="FILE_REFRESH")
+
+            tip_row = box.row(align=True)
+            tip_row.scale_y = 0.85
+            tip_row.label(text="If ComfyUI is running, press Refresh", icon="INFO")
 
             row = box.row(align=True)
             row.scale_y = 1.2

@@ -5,7 +5,9 @@ import bpy
 from bpy.props import StringProperty, BoolProperty, IntProperty, EnumProperty
 from bpy.types import AddonPreferences, Operator
 
-ADDON_ID = "motionsmith_surface"
+ADDON_ID = __package__ or "motionsmith_surface"
+DOCS_URL = "https://huggingface.co/Serqan/MotionSmith-Runtime/blob/main/blender/MotionSmith-Surface/README.md"
+WEBSITE_URL = "https://motionsmithai.blogspot.com/p/motionsmith-surface.html"
 _previews = None
 
 
@@ -24,14 +26,31 @@ def get_preferences(context=None) -> AddonPreferences:
     """Safely get addon preferences."""
     if context is None:
         context = bpy.context
-    prefs = context.preferences.addons.get(ADDON_ID)
-    if prefs:
-        return prefs.preferences
-    # Fallback to search by package
-    pkg = __package__ or ADDON_ID
-    prefs = context.preferences.addons.get(pkg)
-    if prefs:
-        return prefs.preferences
+
+    # 1. Package lookup (standard for Blender 4.2+ extensions)
+    pkg = __package__
+    if pkg and pkg in context.preferences.addons:
+        addon = context.preferences.addons[pkg]
+        if addon and addon.preferences:
+            return addon.preferences
+
+    # 2. Resolved ADDON_ID lookup
+    if ADDON_ID in context.preferences.addons:
+        addon = context.preferences.addons[ADDON_ID]
+        if addon and addon.preferences:
+            return addon.preferences
+
+    # 3. Base ID lookup (legacy add-on mode)
+    if "motionsmith_surface" in context.preferences.addons:
+        addon = context.preferences.addons["motionsmith_surface"]
+        if addon and addon.preferences:
+            return addon.preferences
+
+    # 4. Fallback search across installed add-ons
+    for key, addon in context.preferences.addons.items():
+        if key == "motionsmith_surface" or key.endswith(".motionsmith_surface"):
+            if addon and addon.preferences:
+                return addon.preferences
     return None
 
 
@@ -126,108 +145,191 @@ class MotionSmithSurfacePreferences(AddonPreferences):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        logo = get_icon_id("logo")
-        if logo:
-            row = layout.row()
-            row.alignment = 'LEFT'
-            row.template_icon(icon_value=logo, scale=6.0)
-        row = layout.row()
-        row.alignment = 'LEFT'
-        row.label(text="MotionSmith Surface", icon_value=get_icon_id())
+        # Header Box with Title & Tagline
+        header_box = layout.box()
+        title_row = header_box.row(align=True)
+        title_row.alignment = 'LEFT'
+
+        icon_id = get_icon_id("icon") or get_icon_id("logo")
+        if icon_id:
+            title_row.label(text="MotionSmith Surface", icon_value=icon_id)
+        else:
+            title_row.label(text="MotionSmith Surface", icon="MATERIAL")
+
+        sub_col = header_box.column(align=True)
+        sub_col.scale_y = 0.85
+        sub_col.label(text="AI PBR Texturing and Material Generation for Blender")
+
+        # Quick Links / Action Bar
+        action_row = header_box.row(align=True)
+        action_row.scale_y = 1.15
+
+        op_docs = action_row.operator("wm.url_open", text="Documentation (README)", icon="HELP")
+        op_docs.url = DOCS_URL
+
+        op_web = action_row.operator("wm.url_open", text="Official Website", icon="URL")
+        op_web.url = WEBSITE_URL
+
+        op_install = action_row.operator("motionsmith_surface.install", text="Install Backend & Models", icon="IMPORT")
+        if os.name != 'nt':
+            op_install.enabled = False
+
+        layout.separator(factor=0.5)
+
+        # Tab Navigation Bar
+        tab_row = layout.row(align=True)
+        tab_row.prop(self, "preferences_page", expand=True)
         layout.separator()
 
-        box = layout.box()
-        box.label(text="Backend & Models Setup", icon="IMPORT")
-        row = box.row()
-        row.enabled = os.name == 'nt'
-        row.operator("motionsmith_surface.install", text="Install", icon="IMPORT")
-        box.label(text="Opens setup in a separate window. Downloads the backend and models automatically.")
+        # Tab 1: OVERVIEW
+        if self.preferences_page == "OVERVIEW":
+            feat_box = layout.box()
+            feat_box.label(text="Features & Capabilities", icon="SHADING_RENDERED")
+            feat_col = feat_box.column(align=True)
+            feat_col.label(text="• UltraTex 3D Texturing: AI mesh texturing with multi-view projection and seamless UV transfer.")
+            feat_col.label(text="• Chord PBR Generation: Generate Base Color, Normal, Roughness, Metallic & Height maps from single images.")
+            feat_col.label(text="• Local ComfyUI Backend: Full inference runs locally on your NVIDIA GPU with live progress feedback.")
+            feat_col.label(text="• Auto Packing: All generated texture maps and materials are packed directly into your Blender scene.")
 
-        layout.row().prop(self, "preferences_page", expand=True)
-        layout.separator()
+            steps_box = layout.box()
+            steps_box.label(text="Getting Started", icon="PLAY")
+            steps_col = steps_box.column(align=True)
+            steps_col.label(text="1. Backend Setup: Set your ComfyUI directory and Python path in the 'Backend' tab, or click Install.")
+            steps_col.label(text="2. Sidebar Access: In the 3D Viewport, press [N] to open the sidebar and navigate to the 'Surface' tab.")
+            steps_col.label(text="3. Start Server: Click 'Start ComfyUI Server' to boot the backend service.")
+            steps_col.label(text="4. Generate: Select your mesh, choose Texture or PBR Material mode, set inputs, and click Generate.")
+
+            links_box = layout.box()
+            links_box.label(text="Documentation & Online Resources", icon="WORLD")
+            links_box.label(text="Access full workflow guides, model checkpoints, tutorials, and project updates:")
+            btn_row = links_box.row(align=True)
+            btn_row.scale_y = 1.15
+            b_docs = btn_row.operator("wm.url_open", text="Hugging Face Documentation & Runtime", icon="HELP")
+            b_docs.url = DOCS_URL
+            b_site = btn_row.operator("wm.url_open", text="Official Website & Blog", icon="URL")
+            b_site.url = WEBSITE_URL
+
+            setup_box = layout.box()
+            setup_box.label(text="Automated Windows Setup", icon="IMPORT")
+            setup_box.label(text="Downloads the minimal ComfyUI backend and required AI models into your environment.")
+            s_row = setup_box.row()
+            s_row.scale_y = 1.1
+            s_row.enabled = os.name == 'nt'
+            s_row.operator("motionsmith_surface.install", text="Launch Setup Installer", icon="IMPORT")
+            return
+
+        # Tab 2: BACKEND
+        if self.preferences_page == "BACKEND":
+            info_box = layout.box()
+            info_box.label(text="External / Standalone ComfyUI Notice", icon="INFO")
+            info_col = info_box.column(align=True)
+            info_col.scale_y = 0.85
+            info_col.label(text="• If ComfyUI is already running externally, you do NOT need 'Start Server'.")
+            info_col.label(text="• Simply make sure Server URL matches (default: http://127.0.0.1:8188) and press Refresh in the sidebar.")
+            info_col.label(text="• 'Start Server' and ComfyUI Directory below are only required if launching locally from Blender.")
+
+            srv_box = layout.box()
+            srv_box.label(text="ComfyUI Server Settings", icon="NETWORK_DRIVE")
+            srv_box.prop(self, "server_url")
+            srv_box.prop(self, "server_port")
+            srv_box.prop(self, "show_console")
+            srv_box.prop(self, "comfyui_dir")
+            srv_box.prop(self, "python_executable")
+
+            local_box = layout.box()
+            local_box.label(text="Installation Verification", icon="FILE_FOLDER")
+            directory = os.path.abspath(bpy.path.abspath(self.comfyui_dir)) if self.comfyui_dir else ""
+            python_path = bpy.path.abspath(self.python_executable) if self.python_executable else ""
+            checks = (
+                ("ComfyUI main.py", bool(directory and os.path.isfile(os.path.join(directory, "main.py")))),
+                ("Python Executable", bool(python_path and os.path.isfile(python_path))),
+                ("Models Directory", bool(directory and os.path.isdir(os.path.join(directory, "models")))),
+            )
+            for label, found in checks:
+                row = local_box.row()
+                row.label(text=label, icon='CHECKMARK' if found else 'CANCEL')
+                row.label(text="Found" if found else "Not found")
+
+            local_box.label(text="Note: Local files are only needed if starting ComfyUI directly from Blender.", icon="INFO")
+
+            act_row = local_box.row(align=True)
+            if directory and os.path.isdir(directory):
+                act_row.operator("wm.path_open", text="Open ComfyUI Folder", icon='FILE_FOLDER').filepath = directory
+            if os.name == 'nt':
+                act_row.operator("motionsmith_surface.install", text="Install / Setup Backend", icon='IMPORT')
+            return
+
+        # Tab 3: REQUIREMENTS
+        if self.preferences_page == "REQUIREMENTS":
+            env_box = layout.box()
+            env_box.label(text="System Requirements", icon="SYSTEM")
+            env_col = env_box.column(align=True)
+            env_col.label(text="• OS: Windows 64-bit (Windows 10 / 11)")
+            env_col.label(text="• Blender: 5.0+ (Tested & verified on Blender 5.2)")
+            env_col.label(text="• GPU: NVIDIA GeForce RTX with CUDA support (8GB+ VRAM for GGUF/SD, 12GB+ for full FLUX)")
+
+            stack_box = layout.box()
+            stack_box.label(text="Tested Backend Environment", icon="CHECKMARK")
+            stack_col = stack_box.column(align=True)
+            stack_col.label(text="• ComfyUI 0.27.0 | Frontend 1.45.20 | Python 3.12.10 | PyTorch 2.8.0 + CUDA 12.8")
+            stack_col.label(text="• UltraTex modules: trimesh, xatlas, moderngl, glcontext, gguf")
+            stack_col.label(text="• Chord PBR modules: diffusers, torchvision, omegaconf, imageio")
+            stack_col.label(text="• Background removal: BiRefNet | Live progress: websocket-client")
+
+            models_box = layout.box()
+            models_box.label(text="Required Model Weights", icon="FILE_FOLDER")
+            m_col = models_box.column(align=True)
+            m_col.label(text="• FLUX.2 Klein Base diffusion model (or GGUF Q4_0 quantized)")
+            m_col.label(text="• Qwen 3.8B FP8 mixed text encoder (qwen_3_8b_fp8mixed.safetensors)")
+            m_col.label(text="• Flux2 VAE (flux2-vae.safetensors)")
+            m_col.label(text="• UltraTex LoRAs (ultratex_flux2.safetensors & ultratex_flux2_mr.safetensors)")
+            m_col.label(text="• UltraTex Decoder (ultratex_flux2_decoder.pt)")
+            m_col.label(text="• Background removal (birefnet.safetensors)")
+            m_col.label(text="• Chord PBR checkpoint (chord_v1.safetensors in checkpoints folder)")
+
+            r_row = models_box.row()
+            r_row.operator("wm.url_open", text="Read Full Model Documentation on Hugging Face", icon="HELP").url = DOCS_URL
+            return
+
+        # Tab 4: MODELS
         if self.preferences_page == "MODELS":
             from . import model_catalog
-            layout.label(text="Use Install above to set up the backend and models.", icon="INFO")
-            layout.label(text="Model status uses the ComfyUI directory configured in Backend.")
-            models = os.path.join(bpy.path.abspath(self.comfyui_dir), "models")
+
+            info_box = layout.box()
+            info_box.label(text="Installed Model Files Audit", icon="ASSET_MANAGER")
+            info_col = info_box.column(align=True)
+            info_col.label(text="Verifies presence of required AI weights in configured ComfyUI models directory.")
+            info_col.label(text="Missing models can be downloaded automatically via Install or manually from Hugging Face.")
+
+            models_dir = os.path.join(bpy.path.abspath(self.comfyui_dir), "models") if self.comfyui_dir else ""
+            has_dir = bool(models_dir and os.path.isdir(models_dir))
+
+            if not has_dir:
+                warn_box = layout.box()
+                warn_box.label(text="ComfyUI models folder not found. Please set valid ComfyUI directory in Backend.", icon="ERROR")
+
             for label, relative, _url in model_catalog.MODEL_DOWNLOADS:
                 box = layout.box()
-                path = os.path.join(models, *relative.split("/"))
-                found = os.path.isfile(path)
-                if relative == "checkpoints/SD/chord_v1.safetensors":
-                    found = found or os.path.isfile(os.path.join(models, "checkpoints", "chord_v1.safetensors"))
+                path = os.path.join(models_dir, *relative.split("/")) if has_dir else ""
+                found = bool(path and os.path.isfile(path))
+                if not found and relative == "checkpoints/SD/chord_v1.safetensors" and has_dir:
+                    found = os.path.isfile(os.path.join(models_dir, "checkpoints", "chord_v1.safetensors"))
+
                 row = box.row(align=True)
-                row.label(text=label, icon='CHECKMARK' if found else 'IMPORT')
+                row.label(text=label, icon='CHECKMARK' if found else 'CANCEL')
                 row.label(text="Installed" if found else "Missing")
-            layout.label(text="Chord: Research-Only license. Model publishers may require license acceptance.", icon="INFO")
-            layout.operator("motionsmith_surface.refresh_models", text="Refresh Installed Models", icon='FILE_REFRESH')
-            return
-        if self.preferences_page == "OVERVIEW":
-            box = layout.box()
-            box.label(text="AI Texturing & PBR Materials for Blender", icon="MATERIAL")
-            box.label(text="Texture meshes with UltraTex, or turn an image into PBR maps with Chord.")
-            box.label(text="Runs on your local ComfyUI backend. Generated maps are packed into the blend file.")
-            box = layout.box()
-            box.label(text="Get Started", icon="PLAY")
-            box.label(text="1. Set your ComfyUI directory and Python executable in Backend.")
-            box.label(text="2. Open the Surface sidebar and start the server.")
-            box.label(text="3. Choose Texture or PBR Material, provide your inputs, and Generate.")
-            box = layout.box()
-            box.label(text="Texture", icon="MESH_DATA")
-            box.label(text="Image and optional text guidance, multiple views, UV baking and material assignment.")
-            box.label(text="PBR Material", icon="SHADING_TEXTURE")
-            box.label(text="Base Color, Normal, Roughness, Metallic and Height from one image.")
-            box.label(text="Select a UV-mapped mesh to apply the material to its active slot.")
-            return
+                if not found:
+                    dl_op = row.operator("wm.url_open", text="Download", icon="IMPORT")
+                    dl_op.url = _url
 
-        if self.preferences_page == "REQUIREMENTS":
-            box = layout.box()
-            box.label(text="Environment", icon="SYSTEM")
-            box.label(text="Windows 64-bit | Blender 5.0+ (tested with Blender 5.2)")
-            box.label(text="NVIDIA GPU with a CUDA-compatible PyTorch build for AI generation.")
-            box.label(text="VRAM usage depends on the model, resolution and workflow.")
-            box = layout.box()
-            box.label(text="Tested Backend", icon="CHECKMARK")
-            box.label(text="ComfyUI 0.27.0 | Frontend 1.45.20 | Python 3.12.10")
-            box.label(text="PyTorch 2.8.0 + CUDA 12.8 | torchvision 0.23.0")
-            box.label(text="UltraTex: trimesh, xatlas, moderngl, glcontext | Quantized models: gguf")
-            box.label(text="Chord: diffusers, torchvision, omegaconf, imageio")
-            box.label(text="Background removal: BiRefNet | Blender live progress: websocket-client")
-            box = layout.box()
-            box.label(text="Required Model Files", icon="FILE_FOLDER")
-            for text in (
-                "Texture: FLUX.2 Klein BASE diffusion model (GGUF supported)",
-                "Text encoder: qwen_3_8b_fp8mixed.safetensors",
-                "VAE: flux2-vae.safetensors",
-                "Albedo / MR LoRAs: ultratex_flux2.safetensors / ultratex_flux2_mr.safetensors",
-                "Decoder: ultratex_flux2_decoder.pt | Background removal: birefnet.safetensors",
-                "PBR Material: chord_v1.safetensors (checkpoints folder)",
-            ):
-                box.label(text=text)
-            box.label(text="The runtime currently uses installed models; it does not download missing files.")
-            box.label(text="Chord is supplied under the Ubisoft Machine Learning Research-Only license.", icon="INFO")
+            layout.separator()
+            act_row = layout.row(align=True)
+            act_row.operator("motionsmith_surface.refresh_models", text="Refresh Installed Models", icon='FILE_REFRESH')
+            hf_op = act_row.operator("wm.url_open", text="Documentation & Downloads (Hugging Face)", icon='HELP')
+            hf_op.url = DOCS_URL
+            if os.name == 'nt':
+                act_row.operator("motionsmith_surface.install", text="Install All Models", icon='IMPORT')
             return
-
-        box = layout.box()
-        box.label(text="Backend Server Configuration", icon="NETWORK_DRIVE")
-        box.prop(self, "server_url")
-        box.prop(self, "server_port")
-        box.prop(self, "show_console")
-        box.prop(self, "comfyui_dir")
-        box.prop(self, "python_executable")
-        box = layout.box()
-        box.label(text="Local Installation", icon="FILE_FOLDER")
-        directory = os.path.abspath(bpy.path.abspath(self.comfyui_dir)) if self.comfyui_dir else ""
-        python_path = bpy.path.abspath(self.python_executable) if self.python_executable else ""
-        checks = (
-            ("ComfyUI main.py", bool(directory and os.path.isfile(os.path.join(directory, "main.py")))),
-            ("Python executable", bool(python_path and os.path.isfile(python_path))),
-            ("Models directory", bool(directory and os.path.isdir(os.path.join(directory, "models")))),
-        )
-        for label, found in checks:
-            box.label(text=f"{label}: {'Found' if found else 'Not found'}", icon='CHECKMARK' if found else 'ERROR')
-        if directory and os.path.isdir(directory):
-            box.operator("wm.path_open", text="Open ComfyUI Folder", icon='FILE_FOLDER').filepath = directory
 
 
 def register():

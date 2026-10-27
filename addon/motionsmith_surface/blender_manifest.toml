@@ -5,6 +5,7 @@ name = "MotionSmith Surface"
 tagline = "AI PBR Texturing and Material Generation for Blender"
 maintainer = "MotionSmith"
 type = "add-on"
+website = "https://motionsmithai.blogspot.com/p/motionsmith-surface.html"
 blender_version_min = "5.0.0"
 license = ["SPDX:GPL-3.0-or-later"]
 platforms = ["windows-x64"]

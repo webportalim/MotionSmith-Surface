@@ -149,7 +149,7 @@ def start_server(
 
     if not os.path.isdir(comfyui_dir):
         _SERVER_STATE = "OFFLINE"
-        return False, f"ComfyUI directory not found: {comfyui_dir}"
+        return False, f"ComfyUI directory not found: {comfyui_dir}. (If already running, press Refresh)"
 
     main_py = os.path.join(comfyui_dir, "main.py")
     if not os.path.isfile(main_py):
