@@ -8,7 +8,7 @@ Create textures for a selected mesh or extract PBR material maps from a single i
 
 Created by **Sertan Koç — OneManStudio**.
 
-[Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface_0.1.1.zip) · [Documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html) · [Product page](https://motionsmithai.blogspot.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Surface-Backend)
+[Download the add-on](https://github.com/webportalim/MotionSmith-Surface/raw/refs/heads/main/motionsmith_surface_0.1.1.zip) · [Documentation](https://www.motionsmithai.com/p/motionsmith-surface-docs.html) · [Product page](https://www.motionsmithai.com/p/motionsmith-surface.html) · [Backend files](https://huggingface.co/Serqan/MotionSmith-Surface-Backend)
 
 ## Version 0.1.1
 
@@ -128,7 +128,7 @@ Low VRAM workflows expose additional generated-view and UV-padding controls. Sta
 
 Tune LoRA strengths, attention, sparse retention, memory reservation, reprojection and bake blending. Available settings depend on the workflow.
 
-The GGUF workflow also exposes tiled decode, unseen-surface filling/repair and extra-angle settings. Start with defaults and change one setting at a time. See the [full documentation](https://motionsmithai.blogspot.com/p/motionsmith-surface-docs.html#advanced) for field descriptions.
+The GGUF workflow also exposes tiled decode, unseen-surface filling/repair and extra-angle settings. Start with defaults and change one setting at a time. See the [full documentation](https://www.motionsmithai.com/p/motionsmith-surface-docs.html#advanced) for field descriptions.
 
 ### 8. PBR Material
 
@@ -172,4 +172,4 @@ Third-party runtimes, nodes, models and bundled dependencies retain their own li
 
 Powered by [ComfyUI](https://github.com/comfyanonymous/ComfyUI), UltraTex, GGUF support and [Ubisoft Chord](https://huggingface.co/Ubisoft/ubisoft-laforge-chord).
 
-**Sertan Koç — OneManStudio** · [More MotionSmith tools](https://motionsmithai.blogspot.com/)
+**Sertan Koç — OneManStudio** · [More MotionSmith tools](https://www.motionsmithai.com/)
