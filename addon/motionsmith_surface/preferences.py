@@ -7,7 +7,7 @@ from bpy.types import AddonPreferences, Operator
 
 ADDON_ID = __package__ or "motionsmith_surface"
 DOCS_URL = "https://huggingface.co/Serqan/MotionSmith-Runtime/blob/main/blender/MotionSmith-Surface/README.md"
-WEBSITE_URL = "https://motionsmithai.blogspot.com/p/motionsmith-surface.html"
+WEBSITE_URL = "https://www.motionsmithai.com/p/motionsmith-surface.html"
 _previews = None
 
 
